@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
-import { ExecutionService } from '@/services/execution.service';
+import { defaultExecutionService } from '@/services/execution.service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,12 +16,13 @@ const ConfirmPaymentBodySchema = z.object({
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = requireAuth(req);
   if ('status' in auth) return auth;
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const validated = ConfirmPaymentBodySchema.parse(body);
 
@@ -36,8 +37,7 @@ export async function POST(
       );
     }
 
-    const executionService = new ExecutionService();
-    const result = await executionService.confirmPaymentCapture(params.id, auth.operator.operatorId, {
+    const result = await defaultExecutionService.confirmPaymentCapture(id, auth.operator.operatorId, {
       paymentId,
       orderId,
       signature,

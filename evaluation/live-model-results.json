@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "status": "PENDING_CREDENTIALS",
+  "cases_executed": 0,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 20,
+  "live_model_refusals": 0,
+  "live_model_errors": 0,
+  "provider_order_calls": 0,
+  "reason": "OPENAI_API_KEY was not present in the verified environment. Forced fixtures are reported only in deterministic-results.json."
+}

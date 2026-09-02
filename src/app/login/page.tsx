@@ -59,11 +59,13 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+            <label htmlFor="operator-username" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
               Operator Username
             </label>
             <input
               type="text"
+              id="operator-username"
+              autoComplete="username"
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -73,11 +75,13 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+            <label htmlFor="operator-password" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
               Password
             </label>
             <input
               type="password"
+              id="operator-password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}

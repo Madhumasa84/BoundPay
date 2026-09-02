@@ -207,11 +207,12 @@ export default function PolicyPage() {
       <form onSubmit={handleSave} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="max-transaction" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Max Transaction Limit (₹)
             </label>
             <input
               type="number"
+              id="max-transaction"
               min={1}
               required
               value={maxTxRupees}
@@ -224,11 +225,12 @@ export default function PolicyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="daily-budget" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Daily Spend Budget (₹)
             </label>
             <input
               type="number"
+              id="daily-budget"
               min={1}
               required
               value={dailyBudgetRupees}
@@ -241,11 +243,12 @@ export default function PolicyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="approval-threshold" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Approval Threshold (₹)
             </label>
             <input
               type="number"
+              id="approval-threshold"
               min={0}
               required
               value={approvalThresholdRupees}
@@ -260,11 +263,12 @@ export default function PolicyPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="allowed-categories" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Allowed Categories (comma separated)
             </label>
             <input
               type="text"
+              id="allowed-categories"
               required
               value={allowedCategoriesText}
               onChange={(e) => setAllowedCategoriesText(e.target.value)}
@@ -274,11 +278,12 @@ export default function PolicyPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="approved-merchant" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Approved Merchant ID
             </label>
             <input
               type="text"
+              id="approved-merchant"
               required
               value={approvedMerchant}
               onChange={(e) => setApprovedMerchant(e.target.value)}
@@ -290,11 +295,12 @@ export default function PolicyPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-2">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="policy-expiry" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
               Policy Expiry Date & Time
             </label>
             <input
               type="datetime-local"
+              id="policy-expiry"
               required
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
@@ -306,6 +312,7 @@ export default function PolicyPage() {
             <label className="inline-flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
+                aria-label="Allow subscription products"
                 checked={allowSubscriptions}
                 onChange={(e) => setAllowSubscriptions(e.target.checked)}
                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"

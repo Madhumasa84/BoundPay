@@ -13,11 +13,12 @@ const UpdateProductSchema = z.object({
   merchant_id: z.string().min(1).max(64).optional(),
 });
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const product = getProductById(params.id);
+    const { id } = await params;
+    const product = getProductById(id);
     if (!product) {
-      return jsonResponse({ error: 'Not Found', message: `Product '${params.id}' not found` }, 404);
+      return jsonResponse({ error: 'Not Found', message: `Product '${id}' not found` }, 404);
     }
     return jsonResponse({ product });
   } catch (err) {
@@ -25,14 +26,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = requireAuth(req);
   if ('status' in auth) return auth;
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const validated = UpdateProductSchema.parse(body);
-    const updated = updateProduct(params.id, validated, auth.operator.operatorId);
+    const updated = updateProduct(id, validated, auth.operator.operatorId);
     return jsonResponse({ product: updated });
   } catch (err) {
     return errorResponse(err);

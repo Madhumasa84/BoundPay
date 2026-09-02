@@ -73,7 +73,7 @@ describe('Security, Authentication, & Anti-Forgery HTTP Integration Tests', () =
       }),
     });
 
-    const res = await confirmPaymentRoute(req, { params: { id: 'intent_123' } });
+    const res = await confirmPaymentRoute(req, { params: Promise.resolve({ id: 'intent_123' }) });
     expect(res.status).toBe(401);
   });
 
@@ -82,7 +82,7 @@ describe('Security, Authentication, & Anti-Forgery HTTP Integration Tests', () =
       method: 'POST',
     });
 
-    const res = await refreshStatusRoute(req, { params: { id: 'intent_123' } });
+    const res = await refreshStatusRoute(req, { params: Promise.resolve({ id: 'intent_123' }) });
     expect(res.status).toBe(401);
   });
 
@@ -131,7 +131,7 @@ describe('Security, Authentication, & Anti-Forgery HTTP Integration Tests', () =
       }),
     });
 
-    const res = await confirmPaymentRoute(req, { params: { id: p.intent.id } });
+    const res = await confirmPaymentRoute(req, { params: Promise.resolve({ id: p.intent.id }) });
     const json = await res.json();
     expect(res.status).toBe(409); // StateConflictError: Unauthorized
     expect(json.message).toContain('Unauthorized');
@@ -180,7 +180,7 @@ describe('Security, Authentication, & Anti-Forgery HTTP Integration Tests', () =
       }),
     });
 
-    const res = await confirmPaymentRoute(req, { params: { id: p.intent.id } });
+    const res = await confirmPaymentRoute(req, { params: Promise.resolve({ id: p.intent.id }) });
     const json = await res.json();
     expect(json.success).toBe(false);
 

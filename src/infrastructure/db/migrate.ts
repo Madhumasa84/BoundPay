@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS spend_ledger (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ledger_intent ON spend_ledger(intent_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ledger_one_per_intent ON spend_ledger(intent_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_status ON spend_ledger(status);
 CREATE INDEX IF NOT EXISTS idx_ledger_confirm_time ON spend_ledger(confirmation_timestamp);
 

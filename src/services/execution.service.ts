@@ -121,7 +121,9 @@ export class ExecutionService {
           clock: this.clock,
         });
 
-        throw new QuoteRevalidationError('Quote validity window has expired. Re-proposal required.');
+        return {
+          revalidationError: new QuoteRevalidationError('Quote validity window has expired. Re-proposal required.'),
+        };
       }
 
       // 3. Revalidate Product Version
@@ -152,7 +154,9 @@ export class ExecutionService {
           clock: this.clock,
         });
 
-        throw new QuoteRevalidationError('Catalog product price or attributes modified after proposal; new proposal and authorization required');
+        return {
+          revalidationError: new QuoteRevalidationError('Catalog product price or attributes modified after proposal; new proposal and authorization required'),
+        };
       }
 
       // 4. Revalidate Policy Version
@@ -184,7 +188,9 @@ export class ExecutionService {
           clock: this.clock,
         });
 
-        throw new QuoteRevalidationError('Spending policy modified after proposal; new proposal and authorization required');
+        return {
+          revalidationError: new QuoteRevalidationError('Spending policy modified after proposal; new proposal and authorization required'),
+        };
       }
 
       // 5. Revalidate Approval Binding if state was APPROVED
@@ -296,7 +302,13 @@ export class ExecutionService {
       };
     });
 
-    return atomicTx.immediate();
+    const result = atomicTx.immediate();
+    if ('revalidationError' in result) {
+      // Throw only after the transaction committed the durable EXPIRED state and
+      // its audit evidence. Throwing inside the callback would roll both back.
+      throw result.revalidationError;
+    }
+    return result;
   }
 
   /**
@@ -607,14 +619,52 @@ export class ExecutionService {
         message: 'Payment confirmed successfully',
       };
     } catch (err: any) {
-      // Process error outside DB tx
+      // The reservation was committed before the external call. An exception at
+      // that boundary is therefore an uncertain provider outcome, not merely an
+      // in-memory response status. Persist UNKNOWN before returning so a restart
+      // cannot leave the intent misleadingly stuck in EXECUTING.
+      const unknownAt = this.clock.nowIso();
+      const message = err instanceof Error ? err.message : 'Unknown adapter exception';
+      const current = db
+        .select()
+        .from(schema.purchaseIntents)
+        .where(eq(schema.purchaseIntents.id, intentId))
+        .get();
+
+      if (current?.state === IntentStates.EXECUTING || current?.state === IntentStates.ORDER_CREATED) {
+        db.update(schema.purchaseIntents)
+          .set({
+            state: IntentStates.UNKNOWN,
+            failure_reason: `Payment adapter exception: ${message}`,
+            updated_at: unknownAt,
+          })
+          .where(eq(schema.purchaseIntents.id, intentId))
+          .run();
+
+        appendAuditEvent({
+          eventType: 'PAYMENT_ADAPTER_EXCEPTION',
+          intentId,
+          operatorId,
+          amountPaise: intent.total_amount_paise,
+          stateBefore: current.state,
+          stateAfter: IntentStates.UNKNOWN,
+          payload: { error: message, reservationRetained: true },
+          clock: this.clock,
+        });
+      }
+
       return {
-        intent: { ...intent, state: IntentStates.UNKNOWN, updated_at: this.clock.nowIso() },
+        intent: {
+          ...intent,
+          state: IntentStates.UNKNOWN,
+          failure_reason: `Payment adapter exception: ${message}`,
+          updated_at: unknownAt,
+        },
         ledgerId,
         isMock: intent.payment_adapter_mode === 'MOCK',
         success: false,
         status: IntentStates.UNKNOWN,
-        message: `Execution error: ${err.message}`,
+        message: `Execution outcome unknown after adapter error: ${message}. Reservation retained; reconcile before retrying.`,
       };
     }
   }
@@ -936,6 +986,38 @@ export class ExecutionService {
         if (intent && intent.state !== IntentStates.PAYMENT_CONFIRMED) {
           const nowIso = this.clock.nowIso();
           const paymentId = evt.payment_id || `pay_${Date.now()}`;
+          let storedPayment: any;
+          try {
+            storedPayment = JSON.parse(evt.payload_json)?.payload?.payment?.entity;
+          } catch {
+            storedPayment = null;
+          }
+
+          // Receipt-time validation was impossible because the order was not yet
+          // persisted. Bind the retained event to the intent now, before it can
+          // change either the ledger or state.
+          if (
+            !storedPayment ||
+            storedPayment.order_id !== orderId ||
+            storedPayment.amount !== intent.total_amount_paise ||
+            storedPayment.currency !== intent.currency
+          ) {
+            db.update(schema.webhookEvents)
+              .set({ status: 'IGNORED', intent_id: intent.id, processed_at: nowIso })
+              .where(eq(schema.webhookEvents.id, evt.id))
+              .run();
+            appendAuditEvent({
+              eventType: 'EARLY_WEBHOOK_PAYMENT_MISMATCH',
+              intentId: intent.id,
+              operatorId: intent.owner_id,
+              amountPaise: intent.total_amount_paise,
+              stateBefore: intent.state,
+              stateAfter: intent.state,
+              payload: { eventId: evt.event_id, orderId, receivedAmount: storedPayment?.amount, receivedCurrency: storedPayment?.currency },
+              clock: this.clock,
+            });
+            continue;
+          }
 
           const ledger = db
             .select()

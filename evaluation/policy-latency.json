@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "measurement": "deterministic in-process policy evaluation only",
+  "excludes": [
+    "SQLite",
+    "model latency",
+    "provider latency",
+    "browser checkout duration"
+  ],
+  "environment": {
+    "runtime": "v20.20.2",
+    "platform": "linux/x64"
+  },
+  "warmup_samples_discarded": 100,
+  "sample_count": 1000,
+  "milliseconds": {
+    "min": 0.002453,
+    "median_p50": 0.003912,
+    "p95": 0.006722,
+    "p99": 0.023627,
+    "max": 1.410064
+  }
+}

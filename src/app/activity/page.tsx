@@ -8,17 +8,18 @@ export default function ActivityPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filterType, setFilterType] = useState<string>('ALL');
+  const [error, setError] = useState<string | null>(null);
 
   const fetchAuditEvents = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/audit?limit=100');
-      if (res.ok) {
-        const data = await res.json();
-        setEvents(data.events || []);
-      }
-    } catch (e) {
-      console.error(e);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Audit request failed');
+      setEvents(data.events || []);
+    } catch (e: any) {
+      setError(`${e.message || 'Unable to load audit records'}. Check your session and use Refresh to retry.`);
     } finally {
       setLoading(false);
     }
@@ -87,6 +88,8 @@ export default function ActivityPage() {
           <span className="font-semibold">Append-Only Audit Notice:</span> All events are recorded sequentially through the server application layer. This is an append-only application audit log, not an immutable cryptographic ledger (a database administrator with root access could still modify storage).
         </div>
       </div>
+
+      {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
 
       {/* Filter Toolbar */}
       <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs">

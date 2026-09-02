@@ -117,6 +117,7 @@ export const spendLedger = sqliteTable('spend_ledger', {
   provider_payment_id: text('provider_payment_id'),
 }, (table) => ({
   intentLedgerIdx: index('idx_ledger_intent').on(table.intent_id),
+  oneLedgerPerIntentIdx: uniqueIndex('idx_ledger_one_per_intent').on(table.intent_id),
   statusIdx: index('idx_ledger_status').on(table.status),
   confirmTimeIdx: index('idx_ledger_confirm_time').on(table.confirmation_timestamp),
 }));

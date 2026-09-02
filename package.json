@@ -2,7 +2,7 @@
   "name": "boundpay",
   "version": "0.1.0",
   "private": true,
-  "description": "BoundPay - Phase 1: Bounded Financial Authority for Agentic Commerce",
+  "description": "BoundPay - Inspectable bounded financial authority for agentic commerce",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,6 +13,10 @@
     "test:unit": "vitest run test/unit",
     "test:property": "vitest run test/property",
     "test:integration": "vitest run test/integration",
+    "test:deterministic": "vitest run test/evaluation/deterministic-manifest.test.ts",
+    "test:state": "vitest run test/property/state-machine-sequences.prop.test.ts",
+    "eval:manifest": "tsx evaluation/generate-manifest.ts",
+    "eval:latency": "tsx evaluation/benchmark-policy.ts",
     "test:e2e": "CONFIRM_RESET=true tsx src/infrastructure/db/reset.ts && playwright test",
     "db:migrate": "tsx src/infrastructure/db/migrate.ts",
     "db:seed": "tsx src/infrastructure/db/seed.ts",
@@ -22,7 +26,11 @@
     "onlyBuiltDependencies": [
       "better-sqlite3",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "postcss": ">=8.5.23",
+      "sharp": ">=0.35.0"
+    }
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -30,7 +38,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.39.0",
-    "next": "14.2.24",
+    "next": "15.5.21",
     "openai": "^7.9.0",
     "razorpay": "^2.9.8",
     "react": "18.3.1",

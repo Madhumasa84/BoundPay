@@ -1,7 +1,7 @@
-# BOUNDPay Persistent Specification (Phase 1 & Phase 2)
+# BoundPay Persistent Specification (Phases 1–3)
 **Project**: BoundPay – Bounded Financial Authority for Agentic Commerce  
 **Track**: Razorpay AI Growth & Agentic Commerce Buildathon  
-**Phase**: Phase 2 (Live Model Proposals, Razorpay TEST Standard Checkout, Webhooks & Bounded Financial Authority)  
+**Phase**: Phase 3 (Inspectable Evaluation, Reliability Fixes, Demo and Submission Preparation)
 **Status**: Authoritative Reference Document
 
 ---

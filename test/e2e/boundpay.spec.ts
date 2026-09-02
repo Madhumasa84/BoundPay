@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+test('Unauthenticated protected view redirects to operator login', async ({ page }) => {
+  await page.goto('/activity');
+  await page.waitForURL('/login');
+  await expect(page.getByRole('heading', { name: /Operator Authentication/i })).toBeVisible();
+});
+
 test.describe('BoundPay Operator E2E Browser Scenarios', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to /login
@@ -14,7 +20,7 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
   test('Scenario 1: Operator login and Wireless Mouse auto-allowed', async ({ page }) => {
     // Verify on Shop page with badges
     await expect(page.locator('text=Agentic Commerce Shop & Bounded Authority')).toBeVisible();
-    await expect(page.getByText('MOCK PAYMENT ADAPTER', { exact: true })).toBeVisible();
+    await expect(page.getByText('MOCK PAYMENT — NOT RAZORPAY', { exact: true })).toBeVisible();
 
     // Click quick fixture: 2. Wireless Mouse x1
     await page.click('button:has-text("2. Wireless Mouse x1")');
@@ -26,10 +32,10 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
     await expect(page.locator('text=READY FOR CHECKOUT')).toBeVisible();
 
     // Execute checkout
-    await page.click('button:has-text("Execute Atomic Reservation & Mock Checkout")');
+    await page.getByRole('button', { name: 'Execute with labeled mock provider' }).click();
 
     // Verify payment confirmed badge
-    await expect(page.locator('text=Payment Verified & Confirmed [MOCK_PAYMENT]')).toBeVisible();
+    await expect(page.getByText('Payment confirmed [MOCK — SYNTHETIC]')).toBeVisible();
   });
 
   test('Scenario 2: Mechanical Keyboard requires human approval and executes after approval', async ({ page }) => {
@@ -48,11 +54,11 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
 
     // Verify state transitioned to OPERATOR APPROVED and checkout is now available
     await expect(page.locator('text=OPERATOR APPROVED')).toBeVisible();
-    await expect(page.locator('button:has-text("Execute Atomic Reservation & Mock Checkout")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Execute with labeled mock provider' })).toBeVisible();
 
     // Complete checkout
-    await page.click('button:has-text("Execute Atomic Reservation & Mock Checkout")');
-    await expect(page.locator('text=Payment Verified & Confirmed [MOCK_PAYMENT]')).toBeVisible();
+    await page.getByRole('button', { name: 'Execute with labeled mock provider' }).click();
+    await expect(page.getByText('Payment confirmed [MOCK — SYNTHETIC]')).toBeVisible();
   });
 
   test('Scenario 3: Subscription product is BLOCKED by deterministic policy', async ({ page }) => {
@@ -65,7 +71,7 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
     // Verify state is POLICY BLOCKED
     await expect(page.locator('text=POLICY BLOCKED')).toBeVisible();
     await expect(page.locator('text=Subscriptions are strictly prohibited by standing policy')).toBeVisible();
-    await expect(page.locator('button:has-text("Execute Atomic Reservation & Mock Checkout")')).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Execute with labeled mock provider' })).not.toBeVisible();
   });
 
   test('Scenario 4: Policy view displays live budget usage and updates policy', async ({ page }) => {
@@ -95,13 +101,14 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
     await page.click('button:has-text("Submit Proposal to Policy Engine")');
     await expect(page.locator('text=READY FOR CHECKOUT')).toBeVisible();
 
-    const checkoutBtn = page.locator('button:has-text("Execute Atomic Reservation & Mock Checkout")');
+    const checkoutBtn = page.getByRole('button', { name: 'Execute with labeled mock provider' });
     await checkoutBtn.click();
-    await expect(page.locator('text=Payment Verified & Confirmed [MOCK_PAYMENT]')).toBeVisible();
+    await expect(page.getByText('Payment confirmed [MOCK — SYNTHETIC]')).toBeVisible();
 
-    // Verify repeated action returns confirmation without error
-    await page.reload();
-    await expect(page.locator('text=Agentic Commerce Shop & Bounded Authority')).toBeVisible();
+    const providerOrder = await page.getByText(/Provider Order:/).textContent();
+    await page.getByRole('button', { name: 'Replay identical checkout request (idempotency proof)' }).click();
+    await expect(page.getByText('Payment confirmed [MOCK — SYNTHETIC]')).toBeVisible();
+    await expect(page.getByText(providerOrder!)).toBeVisible();
   });
 
   test('Scenario 7: Error messages are visible and actionable when policy fails', async ({ page }) => {
@@ -137,5 +144,42 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
     await page.click('button:has-text("Ask AI Shopping Agent to Propose")');
 
     await expect(page.locator('text=No catalog item matched your shopping request in fixture mode.')).toBeVisible();
+  });
+
+  test('Scenario 11: changed server price durably invalidates exact approval before provider dispatch', async ({ page }) => {
+    await page.getByRole('button', { name: /1\. Legitimate purchase/ }).click();
+    await page.getByRole('button', { name: 'Submit Proposal to Policy Engine' }).click();
+    await page.getByRole('button', { name: 'Human Operator Approve' }).click();
+    await page.getByRole('button', { name: /3\. Change price to 429900/ }).click();
+    await page.getByRole('button', { name: 'Execute with labeled mock provider' }).click();
+    await expect(page.getByText('Authorization expired or invalidated')).toBeVisible();
+    await expect(page.getByText(/new proposal and authorization required/i)).toBeVisible();
+
+    await page.request.put('/api/catalog/prod_keyboard', { data: { unit_price_paise: 279900 } });
+  });
+
+  test('Scenario 12: mock response loss is UNKNOWN, retains authority, and offers reconciliation without retry', async ({ page }) => {
+    await page.getByRole('button', { name: /4\. Response-loss fault/ }).click();
+    await page.getByRole('button', { name: 'Submit Proposal to Policy Engine' }).click();
+    await page.getByRole('button', { name: 'Execute with labeled mock provider' }).click();
+    await expect(page.getByText('PROVIDER UNCERTAIN')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Reconcile by Receipt' })).toBeVisible();
+    await page.getByRole('button', { name: 'Reconcile by Receipt' }).click();
+    await expect(page.getByText(/no matching captured order found/i)).toBeVisible();
+  });
+
+  test('Scenario 13: narrow mobile viewport keeps core amount, budget and action usable', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/shop');
+    await expect(page.getByRole('heading', { name: 'Purchase at a glance' })).toBeVisible();
+    await expect(page.getByLabel('Explicit purchase budget in rupees')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Evaluate purchase' })).toBeVisible();
+  });
+
+  test('Scenario 14: logout revokes access and returns to login', async ({ page }) => {
+    await page.getByRole('button', { name: 'Logout' }).click();
+    await page.waitForURL('/login');
+    await page.goto('/policy');
+    await page.waitForURL('/login');
   });
 });

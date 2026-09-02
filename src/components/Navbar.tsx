@@ -9,6 +9,7 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [operator, setOperator] = useState<{ id: string; username: string } | null>(null);
+  const [paymentMode, setPaymentMode] = useState<'MOCK' | 'RAZORPAY_TEST' | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -16,12 +17,17 @@ export function Navbar() {
       .then((data) => {
         if (data && data.operator) {
           setOperator(data.operator);
+          fetch('/api/runtime')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((runtime) => setPaymentMode(runtime?.paymentMode || null))
+            .catch(() => setPaymentMode(null));
         } else {
           setOperator(null);
+          if (['/shop', '/policy', '/activity'].includes(pathname)) router.replace('/login');
         }
       })
       .catch(() => setOperator(null));
-  }, [pathname]);
+  }, [pathname, router]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -45,7 +51,7 @@ export function Navbar() {
                 BoundPay
               </span>
               <span className="text-xs uppercase tracking-wider bg-amber-500/20 text-amber-300 font-semibold px-2 py-0.5 rounded border border-amber-500/40">
-                Phase 1 Prototype
+                Phase 3 Evaluation Build
               </span>
             </Link>
 
@@ -74,7 +80,7 @@ export function Navbar() {
           <div className="flex items-center space-x-3">
             <div className="hidden sm:flex items-center space-x-1 bg-slate-800/80 px-2.5 py-1 rounded text-xs text-slate-300 border border-slate-700">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-              <span>MOCK PAYMENT ADAPTER ACTIVE</span>
+              <span>{paymentMode === 'RAZORPAY_TEST' ? 'RAZORPAY TEST MODE' : paymentMode === 'MOCK' ? 'MOCK PAYMENT MODE' : 'MODE CHECKING…'}</span>
             </div>
 
             {operator ? (

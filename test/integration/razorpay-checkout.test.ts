@@ -385,6 +385,43 @@ describe('Razorpay Checkout & Webhook Integration Tests', () => {
     sqlite.close();
   });
 
+  it('Early unmatched webhook with wrong amount is ignored when the order later becomes matchable', async () => {
+    const sqlite = createSqliteConnection(testDbPath);
+    const db = createDrizzleClient(sqlite);
+    const operator = db.select().from(schema.operators).get()!;
+    const orderId = 'order_early_wrong_amount';
+    const eventId = 'evt_early_wrong_amount';
+    const webhookPayload = JSON.stringify({
+      id: eventId,
+      event: 'payment.captured',
+      payload: { payment: { entity: {
+        id: 'pay_wrong_amount', order_id: orderId, amount: 1, currency: 'INR', status: 'captured',
+      } } },
+    });
+    const signature = crypto.createHmac('sha256', testWebhookSecret).update(webhookPayload).digest('hex');
+    const verifier = new RazorpayTestAdapter({ keyId: testKeyId, keySecret: testKeySecret, webhookSecret: testWebhookSecret });
+    expect((await new ExecutionService(verifier, clock).handleRazorpayWebhook(webhookPayload, signature, eventId)).status)
+      .toBe('RETAINED_UNMATCHED');
+
+    const proposal = createProposal(operator.id, {
+      product_id: 'prod_mouse', quantity: 1, purchase_budget_paise: 200000,
+      idempotency_key: 'early-wrong-amount', source_mode: 'MANUAL', fault_injection: 'NONE',
+    }, 'RAZORPAY_TEST', clock);
+    const orderAdapter = new RazorpayTestAdapter({
+      keyId: testKeyId, keySecret: testKeySecret, webhookSecret: testWebhookSecret,
+      customFetch: async () => ({ ok: true, status: 200, json: async () => ({ id: orderId, amount: 149900, currency: 'INR', status: 'created' }) } as any),
+    });
+    const result = await new ExecutionService(orderAdapter, clock).executeIntent(proposal.intent.id, operator.id);
+    expect(result.status).toBe(IntentStates.ORDER_CREATED);
+    expect(db.select().from(schema.spendLedger).where(eq(schema.spendLedger.intent_id, proposal.intent.id)).get()!.status).toBe('RESERVED');
+    expect(db.select().from(schema.webhookEvents).where(eq(schema.webhookEvents.event_id, eventId)).get()!.status).toBe('IGNORED');
+    expect(db.select().from(schema.auditEvents).where(and(
+      eq(schema.auditEvents.intent_id, proposal.intent.id),
+      eq(schema.auditEvents.event_type, 'EARLY_WEBHOOK_PAYMENT_MISMATCH')
+    )).get()).toBeTruthy();
+    sqlite.close();
+  });
+
   it('Status refresh confirms payment when browser callback was lost', async () => {
     const sqlite = createSqliteConnection(testDbPath);
     const db = createDrizzleClient(sqlite);

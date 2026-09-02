@@ -122,10 +122,19 @@ export function updatePolicy(
   const { db } = getDb();
 
   // Validate that daily budget reduction does not violate committed spend
-  const usage = getDailyBudgetUsage('MOCK', clock, current);
-  if (validated.daily_budget_paise < usage.totalCommittedPaise) {
+  // Accounting is isolated by adapter mode, but a single policy governs both
+  // namespaces. A reduction must be safe for whichever namespace currently has
+  // the larger commitment; checking MOCK alone could strand Razorpay TEST spend
+  // above the newly published budget.
+  const mockUsage = getDailyBudgetUsage('MOCK', clock, current);
+  const razorpayTestUsage = getDailyBudgetUsage('RAZORPAY_TEST', clock, current);
+  const highestCommittedPaise = Math.max(
+    mockUsage.totalCommittedPaise,
+    razorpayTestUsage.totalCommittedPaise
+  );
+  if (validated.daily_budget_paise < highestCommittedPaise) {
     throw new Error(
-      `Cannot reduce daily budget to ${validated.daily_budget_paise} paise: committed spend and active reservations already total ${usage.totalCommittedPaise} paise`
+      `Cannot reduce daily budget to ${validated.daily_budget_paise} paise: an adapter mode already has ${highestCommittedPaise} paise committed`
     );
   }
 

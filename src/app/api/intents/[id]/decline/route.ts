@@ -8,11 +8,12 @@ const DeclineSchema = z.object({
   reason: z.string().max(512).optional(),
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = requireAuth(req);
   if ('status' in auth) return auth;
 
   try {
+    const { id } = await params;
     let reason: string | undefined;
     try {
       const body = await req.json();
@@ -22,7 +23,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       // Empty body is allowed
     }
 
-    const updatedIntent = declineIntent(params.id, auth.operator.operatorId, reason);
+    const updatedIntent = declineIntent(id, auth.operator.operatorId, reason);
     return jsonResponse({ intent: updatedIntent });
   } catch (err) {
     return errorResponse(err);

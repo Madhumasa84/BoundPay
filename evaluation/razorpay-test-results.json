@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "status": "PENDING_CREDENTIALS_AND_MANUAL_CHECKOUT",
+  "real_test_transactions_completed": 0,
+  "mock_transactions_completed": 40,
+  "note": "Adapter contract tests use stubbed HTTP and are not real Razorpay TEST transactions. No dashboard record was available for verification."
+}

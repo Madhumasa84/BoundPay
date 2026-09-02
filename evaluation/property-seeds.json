@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "fixed_seeds": [42, 424242, 20260903],
+  "minimum_runs_per_phase3_property_per_seed": 200,
+  "properties": [
+    "terminal confirmed states do not regress",
+    "approval digest changes when an authorization-relevant field changes",
+    "budget admission matches an independent integer inequality oracle"
+  ],
+  "minimized_regression_sequences": []
+}

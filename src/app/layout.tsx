@@ -20,7 +20,7 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
-          BoundPay Phase 1 Prototype &bull; Razorpay AI Growth Track &bull; Explicit Mock Payment Mode &bull; Integer Paise Arithmetic
+          BoundPay Phase 3 Evaluation Build &bull; Mode is shown from server configuration &bull; Integer-paise authority
         </footer>
       </body>
     </html>

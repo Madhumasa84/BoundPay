@@ -1,162 +1,90 @@
-# BoundPay (Phase 1 & Phase 2)
-> **Bounded Financial Authority for Agentic Commerce**  
-> *Track: Razorpay AI Growth & Agentic Commerce Buildathon*
+# BoundPay
 
-BoundPay is a deterministic authorization, persistence, and state management platform that decouples autonomous AI shopping proposals from financial spending authority. In autonomous agentic workflows, an AI model may propose catalog products, but server-enforced spending policies, exact-intent cryptographic approvals, atomic budget reservations, and human-completed Razorpay checkout strictly constrain monetary commitments.
+BoundPay demonstrates bounded financial authority for agentic commerce. A model or fixture may propose one catalog item, but it cannot set prices, approve a purchase, reserve budget, create a provider order, or confirm payment. Those operations remain in deterministic server services backed by SQLite.
 
----
+This repository is a buildathon evaluation build, not a production payment product. Its scope is one operator, one approved merchant, INR integer-paise accounting, one application instance, OpenAI proposal selection, and Razorpay Standard Checkout in TEST mode.
 
-## Technical Architecture
+## What is implemented
 
-```
-                      [ User / Operator ]
-                              │
-                              ▼
-                "I need an ergonomic keyboard under ₹3,000"
-                              │
-                              ▼
-               ┌───────────────────────────────┐
-               │    AI Shopping Agent Service  │
-               │ (OpenAI gpt-4o-mini / Fixture)│
-               └──────────────┬────────────────┘
-                              │ Proposed Product & Quantity
-                              ▼
-        ══════════════════════╪═════════════════════════════════════
-        BOUNDPAY TRUST BOUNDARY (Deterministic Server Authority)
-                              ▼
-               ┌───────────────────────────────┐
-               │ 1. Catalog Attribute Resolver │  (Trusted Price & Category)
-               └──────────────┬────────────────┘
-                              ▼
-               ┌───────────────────────────────┐
-               │ 2. Deterministic Policy Gate  │  (Limits, Allowed Categories)
-               └──────────────┬────────────────┘
-                              │
-               ┌──────────────┴───────────────┐
-               ▼                              ▼
-        [ <= ₹2,500 threshold ]        [ > ₹2,500 threshold ]
-             State: READY            State: NEEDS_APPROVAL
-               │                              │
-               │                   [ Human Operator Approves ]
-               │                     (Exact SHA-256 Digest)
-               │                              │
-               └──────────────┬───────────────┘
-                              │ State: READY / APPROVED
-                              ▼
-               ┌───────────────────────────────┐
-               │ 3. Atomic Budget Reservation  │
-               │   (SQLite BEGIN IMMEDIATE)    │
-               │   Ledger: RESERVED            │
-               │   State: EXECUTING            │
-               └──────────────┬────────────────┘
-                              ▼
-               ┌───────────────────────────────┐
-               │ 4. Payment Adapter Dispatch   │
-               │   - MOCK: Mock confirmation   │
-               │   - RAZORPAY_TEST: Orders API │
-               └──────────────┬────────────────┘
-                              ▼
-               ┌───────────────────────────────┐
-               │ 5. Razorpay Standard Checkout │
-               │   (Client Modal / Test Card)  │
-               └──────────────┬────────────────┘
-                              │
-               ┌──────────────┴────────────────┐
-               ▼                               ▼
-       [ Browser Callback ]           [ Webhook Notification ]
-     POST /confirm-payment             POST /webhooks/razorpay
-               │                               │
-               ▼                               ▼
-   ┌──────────────────────────────────────────────────────────┐
-   │ 6. Cryptographic Signature & Payment Verification        │
-   │    - Checkout HMAC: order_id + "|" + payment_id          │
-   │    - Webhook HMAC: raw request body + webhook secret     │
-   │    - Authoritative status check: status === 'captured'   │
-   └──────────────────────────┬───────────────────────────────┘
-                              ▼
-   ┌──────────────────────────────────────────────────────────┐
-   │ 7. Spend Confirmation & Append-Only Audit Trail          │
-   │    - Ledger: RESERVED ──> CONFIRMED                      │
-   │    - Intent: ORDER_CREATED ──> PAYMENT_CONFIRMED         │
-   │    - Audit Log: PAYMENT_CONFIRMED                        │
-   └──────────────────────────────────────────────────────────┘
-```
+- Server-owned, versioned catalog and spending policy.
+- Explicit per-purchase budget and deterministic transaction, category, merchant, subscription, expiry, and daily-budget checks.
+- Human approval bound to the SHA-256 digest of exact product, quantity, price, budget, policy/catalog versions, owner, merchant, and quote expiry.
+- Atomic SQLite `BEGIN IMMEDIATE` reservation before provider dispatch; one ledger row per intent.
+- Idempotent intent/order behavior, durable `UNKNOWN` outcomes, receipt/status reconciliation, signed callback and webhook verification, webhook replay handling, and append-only application audit export.
+- Clearly separated `FIXTURE`/`LIVE_MODEL` proposal modes and `MOCK`/`RAZORPAY_TEST` payment modes.
+- Authenticated scenario controls that modify normal inputs or inject mock faults at adapter boundaries; they never set a final decision.
+- Responsive Shop, Policy, and Activity views with visible modes, amounts, exact approval data, recovery messages, and JSON audit export.
 
----
+See [Architecture](docs/ARCHITECTURE.md), [Threat model](docs/THREAT_MODEL.md), [Evaluation](docs/EVALUATION.md), and [Phase 3 report](docs/PHASE_3_REPORT.md).
 
-## Technical Stack
+## Setup
 
-- **Framework**: Next.js 14 App Router (Node.js runtime for financial routes)
-- **Language**: TypeScript (strict mode, zero type errors)
-- **Styling**: Tailwind CSS with Lucide icons
-- **Validation**: Zod (strict schema boundaries and untrusted output sanitization)
-- **Database & ORM**: SQLite via `better-sqlite3` and `drizzle-orm` (WAL mode, serialized atomic transactions)
-- **AI Integration**: Official OpenAI SDK (`gpt-4o-mini`) + deterministic offline fixture matcher (`AGENT_MODE=fixture|live`)
-- **Payment Gateway**: Official `razorpay` Node SDK + Standard Checkout client script (`checkout.js`) with hard `rzp_live_` safety guards
-- **Testing**:
-  - `vitest` for unit, contract, signature, and concurrency integration tests (129 tests)
-  - `@playwright/test` for full-browser end-to-end scenarios (10 scenarios)
-- **Authentication**: `bcryptjs` password hashing, HttpOnly session cookies, SameSite enforcement, and login rate limiting
+Requirements: Node.js 20+, pnpm 10+, and persistent local storage for SQLite.
 
----
-
-## Core Financial Invariants
-
-1. **Integer Paise Only**: 1 INR = 100 paise. Zero floating-point rupee arithmetic anywhere in authorization or accounting.
-2. **Deterministic Bounded Authority**: The AI model has zero financial authority. It proposes products; server code enforces all spending limits, categories, and approval thresholds.
-3. **Exact-Intent Approval**: Human approvals cryptographically bind to a canonical SHA-256 digest of intent parameters. Price changes or policy updates invalidate prior approvals.
-4. **Atomic Budget Reservation**: Budget availability check and reservation insertion run inside SQLite serialized write transactions (`BEGIN IMMEDIATE`) before calling payment adapters.
-5. **HMAC-SHA256 Signatures**: Standard checkout callbacks and webhooks verify HMAC signatures using timing-safe comparisons before any state transition.
-6. **Authoritative Provider Verification**: The application verifies that payment status is `'captured'` on the Razorpay API; authorized payments remain pending.
-7. **Webhook Deduplication & Race Handling**: Webhooks deduplicate on `(provider, event_id)` and retain unmatched events when notifications arrive before local order persistence.
-8. **Lost Callback Recovery**: Operators can refresh provider status on demand to recover missed browser callbacks.
-9. **Crash Recovery**: Stale executing intents recover to `UNKNOWN` without creating duplicate orders; reservations remain held for reconciliation.
-
----
-
-## Quick Start & Verification
-
-### 1. Prerequisites
-- Node.js 20.x or higher
-- `pnpm` (version 10+) or `npm`
-
-### 2. Setup Environment
 ```bash
-cp .env.example .env.local
+cp .env.example .env
+pnpm install --frozen-lockfile
+pnpm run db:migrate
+pnpm run db:seed
+pnpm run dev
 ```
 
-### 3. Initialize & Seed Database
+Open `http://localhost:3000`. Local seed credentials are `operator` / `BoundPayPass123!`; replace `OPERATOR_INITIAL_PASSWORD` and `SESSION_SECRET` before any shared deployment.
+
+Important environment values:
+
+- `DATABASE_PATH`: persistent SQLite file path.
+- `AGENT_MODE=fixture|live`; live requires `OPENAI_API_KEY` and optional `OPENAI_MODEL`.
+- `PAYMENT_ADAPTER_MODE=MOCK|RAZORPAY_TEST`; Razorpay TEST requires test key ID/secret and webhook secret. `rzp_live_` keys are rejected.
+- `QUOTE_VALIDITY_SECONDS`: exact-intent quote lifetime.
+
+Live mode never silently falls back to fixtures. Existing intents retain the adapter mode they were created with.
+
+## Demo
+
+Use the “Authenticated demo scenario runner” on Shop and follow [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md). Reset first for a predictable local demo:
+
 ```bash
-pnpm run db:reset
-```
-Default credentials:
-- **Username**: `operator`
-- **Password**: `BoundPayPass123!`
-
-### 4. Run Automated Test Suite
-```bash
-# Run all 129 Vitest unit, contract, signature, and integration tests
-pnpm test
-
-# Run all 10 Playwright E2E browser scenarios
-pnpm run test:e2e
-
-# Run linting and TypeScript checks
-pnpm run lint
-pnpm run typecheck
-```
-
-### 5. Start Application
-```bash
+CONFIRM_RESET=true pnpm run db:reset
 pnpm run build
 pnpm start
 ```
-Visit `http://localhost:3000` to interact with the BoundPay operator dashboard.
 
----
+A genuine Razorpay TEST demonstration still requires the operator to supply credentials, configure a reachable signed webhook, complete Checkout, and capture matching dashboard evidence. Do not present a mock confirmation as that evidence.
 
-## Documentation Links
+## Verification commands and current evidence
 
-- **Phase 1 Implementation Report**: [`docs/PHASE_1_REPORT.md`](docs/PHASE_1_REPORT.md)
-- **Phase 2 Implementation Report**: [`docs/PHASE_2_REPORT.md`](docs/PHASE_2_REPORT.md)
-- **Complete Architecture Specification**: [`docs/BOUNDPay_SPEC.md`](docs/BOUNDPay_SPEC.md)
+```bash
+pnpm run typecheck
+pnpm run lint
+pnpm test
+pnpm run test:deterministic
+pnpm run test:state
+pnpm run test:e2e
+pnpm run build
+pnpm run eval:latency
+pnpm audit --prod
+```
+
+Phase 3 verified 238/238 Vitest tests and 15/15 Chromium Playwright tests. The 100-case deterministic manifest issued 182 application-level requests through real services and isolated SQLite databases; the only mocked component was the external payment provider. It recorded 100 passes, no skipped cases, no unexpected provider order calls, no duplicate order creation, and no ledger mismatch within those cases. The production dependency audit reported no known vulnerabilities after upgrading Next.js and overriding vulnerable transitive versions.
+
+Live OpenAI evaluation: 0 executed / 20 skipped (credential unavailable). Real Razorpay TEST transactions: 0 (credentials and manual Checkout unavailable). These pending integrations mean the project is not yet fully submission-ready.
+
+## Deployment preparation
+
+Build with `pnpm run build` and run with `pnpm start`. Deploy exactly one application instance with a persistent volume mounted at `DATABASE_PATH`; SQLite file locks and the in-process mock adapter are not a multi-instance design. Use HTTPS, strong environment-only secrets, `Secure` cookies (`NODE_ENV=production`), and a public HTTPS Razorpay webhook URL. Run migrations before start and back up the persistent volume. Re-run auth, webhook, payment, and browser smoke tests in the deployed environment.
+
+No deployment or publication is performed by repository scripts.
+
+## Limitations
+
+- One operator, one approved merchant, one currency, and one application instance.
+- No claim of power-loss or storage-corruption durability.
+- The audit is append-only through the application, not tamper-proof against a database administrator.
+- The policy gate constrains explicit attributes; a model can still make an undesirable choice that technically satisfies policy.
+- The live-model set is small and currently unexecuted; it cannot establish general prompt-injection immunity.
+- Browser automation does not complete third-party Razorpay Checkout.
+
+## AI coding-tool disclosure
+
+Codex was used to inspect, implement, test, and draft Phase 3 artifacts. Human review is still required for credentials, actual provider/dashboard evidence, live-model result interpretation, deployment configuration, and final claim wording. Generated claims were checked against command output and machine-readable artifacts rather than treated as evidence by themselves.

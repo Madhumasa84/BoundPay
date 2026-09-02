@@ -1,0 +1,3921 @@
+{
+  "manifest_version": 1,
+  "generated_by": "evaluation/generate-manifest.ts",
+  "case_count": 100,
+  "cases": [
+    {
+      "case_id": "auto-valid-01",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-02",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-03",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-04",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-05",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-06",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-06",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-07",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-07",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-08",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-08",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-09",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-09",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-10",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-10",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-11",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-11",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-12",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-12",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-13",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-13",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-14",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-14",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-15",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-15",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-16",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-16",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-17",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-17",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-18",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-18",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-19",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-19",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-20",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-20",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-21",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-21",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-22",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-22",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-23",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-23",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-24",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-24",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-25",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-25",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-26",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-26",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-27",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-27",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-28",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-28",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-29",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-29",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "auto-valid-30",
+      "kind": "AUTO_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "auto-valid-30",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 149900,
+        "error_or_audit_evidence": "PAYMENT_CONFIRMED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "approval-valid-01",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-02",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-03",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-04",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-05",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-06",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-06",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-07",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-07",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-08",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-08",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-09",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-09",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "approval-valid-10",
+      "kind": "APPROVAL_VALID",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "approval-valid-10",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "PAYMENT_CONFIRMED",
+        "provider_order_calls": 1,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 279900,
+        "error_or_audit_evidence": "INTENT_APPROVED",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "purchase-budget-block-01",
+      "kind": "PURCHASE_BUDGET_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "purchase-budget-block-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PURCHASE_BUDGET_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "purchase-budget-block-02",
+      "kind": "PURCHASE_BUDGET_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "purchase-budget-block-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PURCHASE_BUDGET_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "purchase-budget-block-03",
+      "kind": "PURCHASE_BUDGET_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "purchase-budget-block-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PURCHASE_BUDGET_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "purchase-budget-block-04",
+      "kind": "PURCHASE_BUDGET_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "purchase-budget-block-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PURCHASE_BUDGET_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "purchase-budget-block-05",
+      "kind": "PURCHASE_BUDGET_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "purchase-budget-block-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PURCHASE_BUDGET_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "max-tx-block-01",
+      "kind": "MAX_TX_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 3,
+        "purchase_budget_paise": 500000,
+        "idempotency_key": "max-tx-block-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "MAX_TRANSACTION_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "max-tx-block-02",
+      "kind": "MAX_TX_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 3,
+        "purchase_budget_paise": 500000,
+        "idempotency_key": "max-tx-block-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "MAX_TRANSACTION_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "max-tx-block-03",
+      "kind": "MAX_TX_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 3,
+        "purchase_budget_paise": 500000,
+        "idempotency_key": "max-tx-block-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "MAX_TRANSACTION_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "max-tx-block-04",
+      "kind": "MAX_TX_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 3,
+        "purchase_budget_paise": 500000,
+        "idempotency_key": "max-tx-block-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "MAX_TRANSACTION_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "max-tx-block-05",
+      "kind": "MAX_TX_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 3,
+        "purchase_budget_paise": 500000,
+        "idempotency_key": "max-tx-block-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "MAX_TRANSACTION_LIMIT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "daily-block-01",
+      "kind": "DAILY_BLOCK",
+      "initial_policy": {
+        "source": "seed",
+        "overrides": {
+          "max_transaction_amount_paise": 200000,
+          "daily_budget_paise": 200000,
+          "approval_threshold_paise": 150000
+        }
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [
+        {
+          "amount_paise": 89900,
+          "status": "CONFIRMED",
+          "mode": "MOCK"
+        }
+      ],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "daily-block-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "DAILY_BUDGET_AVAILABLE",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "daily-block-02",
+      "kind": "DAILY_BLOCK",
+      "initial_policy": {
+        "source": "seed",
+        "overrides": {
+          "max_transaction_amount_paise": 200000,
+          "daily_budget_paise": 200000,
+          "approval_threshold_paise": 150000
+        }
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [
+        {
+          "amount_paise": 89900,
+          "status": "CONFIRMED",
+          "mode": "MOCK"
+        }
+      ],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "daily-block-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "DAILY_BUDGET_AVAILABLE",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "daily-block-03",
+      "kind": "DAILY_BLOCK",
+      "initial_policy": {
+        "source": "seed",
+        "overrides": {
+          "max_transaction_amount_paise": 200000,
+          "daily_budget_paise": 200000,
+          "approval_threshold_paise": 150000
+        }
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [
+        {
+          "amount_paise": 89900,
+          "status": "CONFIRMED",
+          "mode": "MOCK"
+        }
+      ],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "daily-block-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "DAILY_BUDGET_AVAILABLE",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "daily-block-04",
+      "kind": "DAILY_BLOCK",
+      "initial_policy": {
+        "source": "seed",
+        "overrides": {
+          "max_transaction_amount_paise": 200000,
+          "daily_budget_paise": 200000,
+          "approval_threshold_paise": 150000
+        }
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [
+        {
+          "amount_paise": 89900,
+          "status": "CONFIRMED",
+          "mode": "MOCK"
+        }
+      ],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "daily-block-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "DAILY_BUDGET_AVAILABLE",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "daily-block-05",
+      "kind": "DAILY_BLOCK",
+      "initial_policy": {
+        "source": "seed",
+        "overrides": {
+          "max_transaction_amount_paise": 200000,
+          "daily_budget_paise": 200000,
+          "approval_threshold_paise": 150000
+        }
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [
+        {
+          "amount_paise": 89900,
+          "status": "CONFIRMED",
+          "mode": "MOCK"
+        }
+      ],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "daily-block-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "DAILY_BUDGET_AVAILABLE",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "subscription-block-01",
+      "kind": "SUBSCRIPTION_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "subscription-block-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "SUBSCRIPTION_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "subscription-block-02",
+      "kind": "SUBSCRIPTION_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "subscription-block-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "SUBSCRIPTION_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "subscription-block-03",
+      "kind": "SUBSCRIPTION_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "subscription-block-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "SUBSCRIPTION_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "subscription-block-04",
+      "kind": "SUBSCRIPTION_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "subscription-block-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "SUBSCRIPTION_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "subscription-block-05",
+      "kind": "SUBSCRIPTION_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "subscription-block-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "SUBSCRIPTION_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "category-block-01",
+      "kind": "CATEGORY_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_book": {
+            "category": "luxury"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_book",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "category-block-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "CATEGORY_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "category-block-02",
+      "kind": "CATEGORY_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_book": {
+            "category": "luxury"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_book",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "category-block-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "CATEGORY_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "category-block-03",
+      "kind": "CATEGORY_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_book": {
+            "category": "luxury"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_book",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "category-block-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "CATEGORY_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "category-block-04",
+      "kind": "CATEGORY_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_book": {
+            "category": "luxury"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_book",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "category-block-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "CATEGORY_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "category-block-05",
+      "kind": "CATEGORY_BLOCK",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_book": {
+            "category": "luxury"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_book",
+        "quantity": 1,
+        "purchase_budget_paise": 100000,
+        "idempotency_key": "category-block-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "CATEGORY_ALLOWED",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "unapproved-merchant-01",
+      "kind": "UNAPPROVED_MERCHANT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_mouse": {
+            "merchant_id": "unapproved_store"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "unapproved-merchant-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "APPROVED_MERCHANT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "unapproved-merchant-02",
+      "kind": "UNAPPROVED_MERCHANT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_mouse": {
+            "merchant_id": "unapproved_store"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "unapproved-merchant-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "APPROVED_MERCHANT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "unapproved-merchant-03",
+      "kind": "UNAPPROVED_MERCHANT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_mouse": {
+            "merchant_id": "unapproved_store"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "unapproved-merchant-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "APPROVED_MERCHANT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "unapproved-merchant-04",
+      "kind": "UNAPPROVED_MERCHANT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_mouse": {
+            "merchant_id": "unapproved_store"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "unapproved-merchant-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "APPROVED_MERCHANT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "unapproved-merchant-05",
+      "kind": "UNAPPROVED_MERCHANT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed",
+        "overrides": {
+          "prod_mouse": {
+            "merchant_id": "unapproved_store"
+          }
+        }
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "unapproved-merchant-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "APPROVED_MERCHANT",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "expired-policy-01",
+      "kind": "EXPIRED_POLICY",
+      "initial_policy": {
+        "source": "seed",
+        "overrides": {
+          "expires_at": "2026-09-03T11:59:59.000Z"
+        }
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "expired-policy-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "POLICY_ACTIVE",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "expired-policy-02",
+      "kind": "EXPIRED_POLICY",
+      "initial_policy": {
+        "source": "seed",
+        "overrides": {
+          "expires_at": "2026-09-03T11:59:59.000Z"
+        }
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "expired-policy-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "POLICY_ACTIVE",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "expired-policy-03",
+      "kind": "EXPIRED_POLICY",
+      "initial_policy": {
+        "source": "seed",
+        "overrides": {
+          "expires_at": "2026-09-03T11:59:59.000Z"
+        }
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "expired-policy-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "POLICY_ACTIVE",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "expired-quote-01",
+      "kind": "EXPIRED_QUOTE",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "expired-quote-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 601
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "QUOTE_EXPIRED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "expired-quote-02",
+      "kind": "EXPIRED_QUOTE",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "expired-quote-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 601
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "QUOTE_EXPIRED",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "changed-catalog-01",
+      "kind": "CHANGED_CATALOG",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-catalog-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PRODUCT_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-catalog-02",
+      "kind": "CHANGED_CATALOG",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-catalog-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PRODUCT_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-catalog-03",
+      "kind": "CHANGED_CATALOG",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-catalog-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PRODUCT_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-catalog-04",
+      "kind": "CHANGED_CATALOG",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-catalog-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PRODUCT_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-catalog-05",
+      "kind": "CHANGED_CATALOG",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-catalog-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "PRODUCT_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-policy-01",
+      "kind": "CHANGED_POLICY",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-policy-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "POLICY_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-policy-02",
+      "kind": "CHANGED_POLICY",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-policy-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "POLICY_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-policy-03",
+      "kind": "CHANGED_POLICY",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-policy-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "POLICY_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-policy-04",
+      "kind": "CHANGED_POLICY",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-policy-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "POLICY_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "changed-policy-05",
+      "kind": "CHANGED_POLICY",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_keyboard",
+        "quantity": 1,
+        "purchase_budget_paise": 300000,
+        "idempotency_key": "changed-policy-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "APPROVE",
+        "exact_intent": true
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "EXPIRED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "POLICY_VERSION_MISMATCH",
+        "request_count": 3
+      }
+    },
+    {
+      "case_id": "idempotent-repeat-01",
+      "kind": "IDEMPOTENT_REPEAT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotent-repeat-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "READY",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "same intent ID",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotent-repeat-02",
+      "kind": "IDEMPOTENT_REPEAT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotent-repeat-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "READY",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "same intent ID",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotent-repeat-03",
+      "kind": "IDEMPOTENT_REPEAT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotent-repeat-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "READY",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "same intent ID",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotent-repeat-04",
+      "kind": "IDEMPOTENT_REPEAT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotent-repeat-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "READY",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "same intent ID",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotent-repeat-05",
+      "kind": "IDEMPOTENT_REPEAT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotent-repeat-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "READY",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "same intent ID",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotency-conflict-01",
+      "kind": "IDEMPOTENCY_CONFLICT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotency-conflict-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "CONFLICT",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Idempotency key",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotency-conflict-02",
+      "kind": "IDEMPOTENCY_CONFLICT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotency-conflict-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "CONFLICT",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Idempotency key",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotency-conflict-03",
+      "kind": "IDEMPOTENCY_CONFLICT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotency-conflict-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "CONFLICT",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Idempotency key",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotency-conflict-04",
+      "kind": "IDEMPOTENCY_CONFLICT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotency-conflict-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "CONFLICT",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Idempotency key",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "idempotency-conflict-05",
+      "kind": "IDEMPOTENCY_CONFLICT",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_mouse",
+        "quantity": 1,
+        "purchase_budget_paise": 200000,
+        "idempotency_key": "idempotency-conflict-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "CONFLICT",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Idempotency key",
+        "request_count": 2
+      }
+    },
+    {
+      "case_id": "forced-compromise-01",
+      "kind": "FORCED_COMPROMISE",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "forced-compromise-01",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Subscriptions are prohibited",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "forced-compromise-02",
+      "kind": "FORCED_COMPROMISE",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "forced-compromise-02",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Subscriptions are prohibited",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "forced-compromise-03",
+      "kind": "FORCED_COMPROMISE",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "forced-compromise-03",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Subscriptions are prohibited",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "forced-compromise-04",
+      "kind": "FORCED_COMPROMISE",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "forced-compromise-04",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Subscriptions are prohibited",
+        "request_count": 1
+      }
+    },
+    {
+      "case_id": "forced-compromise-05",
+      "kind": "FORCED_COMPROMISE",
+      "initial_policy": {
+        "source": "seed"
+      },
+      "initial_catalog": {
+        "source": "seed"
+      },
+      "initial_ledger": [],
+      "request": {
+        "product_id": "prod_subscription",
+        "quantity": 1,
+        "purchase_budget_paise": 1500000,
+        "idempotency_key": "forced-compromise-05",
+        "source_mode": "FIXTURE"
+      },
+      "approval": {
+        "action": "NONE",
+        "exact_intent": false
+      },
+      "clock": {
+        "start": "2026-09-03T12:00:00.000Z",
+        "advance_seconds": 0
+      },
+      "adapter": {
+        "mode": "MOCK",
+        "behavior": "CAPTURE"
+      },
+      "expected": {
+        "decision_or_state": "BLOCKED",
+        "provider_order_calls": 0,
+        "reservation_change_paise": 0,
+        "confirmed_spend_change_paise": 0,
+        "error_or_audit_evidence": "Subscriptions are prohibited",
+        "request_count": 1
+      }
+    }
+  ]
+}

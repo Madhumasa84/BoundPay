@@ -15,11 +15,12 @@ const ExecuteSchema = z.object({
   ]).optional().default('NONE'),
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = requireAuth(req);
   if ('status' in auth) return auth;
 
   try {
+    const { id } = await params;
     let faultInjection = 'NONE' as const;
     try {
       const body = await req.json();
@@ -30,7 +31,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     const result = await defaultExecutionService.executeIntent(
-      params.id,
+      id,
       auth.operator.operatorId,
       faultInjection
     );
