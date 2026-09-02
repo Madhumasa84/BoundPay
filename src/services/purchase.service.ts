@@ -4,7 +4,7 @@ import { getDb, schema } from '../infrastructure/db';
 import {
   CanonicalIntentPayload,
   computeCanonicalIntentHash,
-  CreateProposalRequest,
+  CreateProposalInput,
   CreateProposalRequestSchema,
   PurchaseIntent,
 } from '../domain/intent';
@@ -39,7 +39,7 @@ export interface ProposalResult {
 
 export function createProposal(
   ownerId: string,
-  rawRequest: CreateProposalRequest,
+  rawRequest: CreateProposalInput,
   paymentAdapterMode: 'MOCK' | 'RAZORPAY_TEST' = 'MOCK',
   clock: Clock = defaultClock
 ): ProposalResult {
@@ -184,6 +184,11 @@ export function createProposal(
     quote_expiry: quoteExpiry,
     source_mode: request.source_mode,
     payment_adapter_mode: paymentAdapterMode,
+    model_provider: request.model_provider || null,
+    model_name: request.model_name || null,
+    receipt: `rcpt_${intentId.replace(/-/g, '').substring(0, 16)}`,
+    provider_order_id: null,
+    provider_payment_id: null,
     state: initialState,
     failure_reason: failureReason,
     created_at: nowIso,

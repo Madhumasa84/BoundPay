@@ -120,4 +120,22 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
     await expect(page.locator('text=operator').first()).toBeVisible();
     await expect(page.locator('button:has-text("Logout")')).toBeVisible();
   });
+
+  test('Scenario 9: AI Shopping Agent proposes product from natural language request', async ({ page }) => {
+    // Fill shopping request input
+    await page.fill('input[placeholder="e.g. Ergonomic wireless mouse for travel under ₹2,000"]', 'I need a wireless mouse for travel');
+    await page.click('button:has-text("Ask AI Shopping Agent to Propose")');
+
+    // Verify proposal returned by agent and evaluated by policy
+    await expect(page.locator('text=READY FOR CHECKOUT')).toBeVisible();
+    await expect(page.locator('text=Wireless Mouse').first()).toBeVisible();
+    await expect(page.locator('text=Source: FIXTURE')).toBeVisible();
+  });
+
+  test('Scenario 10: AI Shopping Agent returns rejection when no items match request', async ({ page }) => {
+    await page.fill('input[placeholder="e.g. Ergonomic wireless mouse for travel under ₹2,000"]', 'unobtainium alien artifact spaceship');
+    await page.click('button:has-text("Ask AI Shopping Agent to Propose")');
+
+    await expect(page.locator('text=No catalog item matched your shopping request in fixture mode.')).toBeVisible();
+  });
 });

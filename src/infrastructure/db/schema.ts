@@ -71,8 +71,13 @@ export const purchaseIntents = sqliteTable('purchase_intents', {
   policy_version: integer('policy_version').notNull(),
   purchase_budget_paise: integer('purchase_budget_paise').notNull(),
   quote_expiry: text('quote_expiry').notNull(),
-  source_mode: text('source_mode').notNull(), // 'MANUAL' | 'FIXTURE' | 'AGENT_PROPOSAL'
+  source_mode: text('source_mode').notNull(), // 'MANUAL' | 'FIXTURE' | 'LIVE_MODEL' | 'AGENT_PROPOSAL'
   payment_adapter_mode: text('payment_adapter_mode').notNull(), // 'MOCK' | 'RAZORPAY_TEST'
+  model_provider: text('model_provider'),
+  model_name: text('model_name'),
+  receipt: text('receipt'),
+  provider_order_id: text('provider_order_id'),
+  provider_payment_id: text('provider_payment_id'),
   state: text('state').notNull(), // IntentState
   failure_reason: text('failure_reason'),
   created_at: text('created_at').notNull(),
@@ -85,6 +90,7 @@ export const purchaseIntents = sqliteTable('purchase_intents', {
   ),
   stateIdx: index('idx_intents_state').on(table.state),
   createdIdx: index('idx_intents_created_at').on(table.created_at),
+  orderIdx: index('idx_intents_order_id').on(table.provider_order_id),
 }));
 
 export const intentApprovals = sqliteTable('intent_approvals', {
@@ -130,4 +136,22 @@ export const auditEvents = sqliteTable('audit_events', {
   timeIdx: index('idx_audit_time').on(table.timestamp),
   intentIdx: index('idx_audit_intent').on(table.intent_id),
   typeIdx: index('idx_audit_type').on(table.event_type),
+}));
+
+export const webhookEvents = sqliteTable('webhook_events', {
+  id: text('id').primaryKey(),
+  provider: text('provider').notNull().default('RAZORPAY'),
+  event_id: text('event_id').notNull(),
+  event_type: text('event_type').notNull(),
+  intent_id: text('intent_id'),
+  order_id: text('order_id'),
+  payment_id: text('payment_id'),
+  payload_json: text('payload_json').notNull(),
+  status: text('status').notNull(), // 'PROCESSED' | 'IGNORED' | 'UNMATCHED'
+  received_at: text('received_at').notNull(),
+  processed_at: text('processed_at'),
+}, (table) => ({
+  eventUniqueIdx: uniqueIndex('idx_webhook_events_unique').on(table.provider, table.event_id),
+  orderIdx: index('idx_webhook_order').on(table.order_id),
+  statusIdx: index('idx_webhook_status').on(table.status),
 }));

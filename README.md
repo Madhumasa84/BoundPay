@@ -1,51 +1,116 @@
-# BoundPay (Phase 1)
+# BoundPay (Phase 1 & Phase 2)
 > **Bounded Financial Authority for Agentic Commerce**  
 > *Track: Razorpay AI Growth & Agentic Commerce Buildathon*
 
-BoundPay is a deterministic authorization, persistence, and state management platform that decouples autonomous AI shopping proposals from financial spending authority. In autonomous agentic workflows, an untrusted AI model may propose catalog products, but server-enforced spending policies, exact-intent cryptographic approvals, and atomic budget reservations strictly constrain monetary commitments.
+BoundPay is a deterministic authorization, persistence, and state management platform that decouples autonomous AI shopping proposals from financial spending authority. In autonomous agentic workflows, an AI model may propose catalog products, but server-enforced spending policies, exact-intent cryptographic approvals, atomic budget reservations, and human-completed Razorpay checkout strictly constrain monetary commitments.
+
+---
+
+## Technical Architecture
+
+```
+                      [ User / Operator ]
+                              │
+                              ▼
+                "I need an ergonomic keyboard under ₹3,000"
+                              │
+                              ▼
+               ┌───────────────────────────────┐
+               │    AI Shopping Agent Service  │
+               │ (OpenAI gpt-4o-mini / Fixture)│
+               └──────────────┬────────────────┘
+                              │ Proposed Product & Quantity
+                              ▼
+        ══════════════════════╪═════════════════════════════════════
+        BOUNDPAY TRUST BOUNDARY (Deterministic Server Authority)
+                              ▼
+               ┌───────────────────────────────┐
+               │ 1. Catalog Attribute Resolver │  (Trusted Price & Category)
+               └──────────────┬────────────────┘
+                              ▼
+               ┌───────────────────────────────┐
+               │ 2. Deterministic Policy Gate  │  (Limits, Allowed Categories)
+               └──────────────┬────────────────┘
+                              │
+               ┌──────────────┴───────────────┐
+               ▼                              ▼
+        [ <= ₹2,500 threshold ]        [ > ₹2,500 threshold ]
+             State: READY            State: NEEDS_APPROVAL
+               │                              │
+               │                   [ Human Operator Approves ]
+               │                     (Exact SHA-256 Digest)
+               │                              │
+               └──────────────┬───────────────┘
+                              │ State: READY / APPROVED
+                              ▼
+               ┌───────────────────────────────┐
+               │ 3. Atomic Budget Reservation  │
+               │   (SQLite BEGIN IMMEDIATE)    │
+               │   Ledger: RESERVED            │
+               │   State: EXECUTING            │
+               └──────────────┬────────────────┘
+                              ▼
+               ┌───────────────────────────────┐
+               │ 4. Payment Adapter Dispatch   │
+               │   - MOCK: Mock confirmation   │
+               │   - RAZORPAY_TEST: Orders API │
+               └──────────────┬────────────────┘
+                              ▼
+               ┌───────────────────────────────┐
+               │ 5. Razorpay Standard Checkout │
+               │   (Client Modal / Test Card)  │
+               └──────────────┬────────────────┘
+                              │
+               ┌──────────────┴────────────────┐
+               ▼                               ▼
+       [ Browser Callback ]           [ Webhook Notification ]
+     POST /confirm-payment             POST /webhooks/razorpay
+               │                               │
+               ▼                               ▼
+   ┌──────────────────────────────────────────────────────────┐
+   │ 6. Cryptographic Signature & Payment Verification        │
+   │    - Checkout HMAC: order_id + "|" + payment_id          │
+   │    - Webhook HMAC: raw request body + webhook secret     │
+   │    - Authoritative status check: status === 'captured'   │
+   └──────────────────────────┬───────────────────────────────┘
+                              ▼
+   ┌──────────────────────────────────────────────────────────┐
+   │ 7. Spend Confirmation & Append-Only Audit Trail          │
+   │    - Ledger: RESERVED ──> CONFIRMED                      │
+   │    - Intent: ORDER_CREATED ──> PAYMENT_CONFIRMED         │
+   │    - Audit Log: PAYMENT_CONFIRMED                        │
+   └──────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Technical Stack
 
 - **Framework**: Next.js 14 App Router (Node.js runtime for financial routes)
-- **Language**: TypeScript (strict mode, no implicit any)
-- **Styling**: Tailwind CSS
-- **Validation**: Zod (strict schema boundaries)
+- **Language**: TypeScript (strict mode, zero type errors)
+- **Styling**: Tailwind CSS with Lucide icons
+- **Validation**: Zod (strict schema boundaries and untrusted output sanitization)
 - **Database & ORM**: SQLite via `better-sqlite3` and `drizzle-orm` (WAL mode, serialized atomic transactions)
+- **AI Integration**: Official OpenAI SDK (`gpt-4o-mini`) + deterministic offline fixture matcher (`AGENT_MODE=fixture|live`)
+- **Payment Gateway**: Official `razorpay` Node SDK + Standard Checkout client script (`checkout.js`) with hard `rzp_live_` safety guards
 - **Testing**:
-  - `vitest` for unit, boundary, and database concurrency integration tests
-  - `fast-check` for property-based financial invariant tests
-  - `@playwright/test` for end-to-end browser scenarios
-- **Authentication**: `bcryptjs` password hashing, HttpOnly session cookies, SameSite enforcement, login rate-limiting, and CSRF origin verification
-- **Payment Adapter**: Explicitly labeled `MockPaymentAdapter` with fault injection controls
+  - `vitest` for unit, contract, signature, and concurrency integration tests (129 tests)
+  - `@playwright/test` for full-browser end-to-end scenarios (10 scenarios)
+- **Authentication**: `bcryptjs` password hashing, HttpOnly session cookies, SameSite enforcement, and login rate limiting
 
 ---
 
-## Scope & Non-Goals
+## Core Financial Invariants
 
-### Implemented in Phase 1
-- Single operator account and authentication session.
-- Single approved merchant (`demo_store`).
-- Strictly INR currency with **integer paise** arithmetic (₹1 = 100 paise; e.g., ₹2,799 = 279900 paise). Zero floating-point rupee math.
-- Server-controlled, versioned catalog (tax and shipping included).
-- Monotonically increasing, editable spending policy with Asia/Kolkata daily budget windows.
-- Dual-bounded spending: `effective_limit = min(policy.max_transaction_amount_paise, purchase_budget_paise)`.
-- Exact-intent human approval bound to canonical SHA-256 intent digests.
-- Transaction-safe atomic budget reservations (`BEGIN IMMEDIATE`) preventing concurrent overspending.
-- Scoped idempotency `(owner_id, idempotency_key, payment_adapter_mode)`.
-- Append-only persistent audit trail with JSON export.
-- Mock payment adapter supporting simulated bank rejections, timeouts, response loss, and pending auth.
-- Three full views: **Shop**, **Policy**, and **Activity**.
-
-### Explicitly Excluded (Do Not Add in Phase 1)
-- No live LLM or external model APIs.
-- No live Razorpay API calls (only explicitly labeled mock adapter).
-- No multi-agent orchestration, RAG, vector databases, or blockchain.
-- No model training.
-- No refunds, payouts, or subscription billing integrations.
-- No multi-tenant team management or organization hierarchies.
-- Not claimed to be production-ready or immune to arbitrary real-world merchant misclassification.
+1. **Integer Paise Only**: 1 INR = 100 paise. Zero floating-point rupee arithmetic anywhere in authorization or accounting.
+2. **Deterministic Bounded Authority**: The AI model has zero financial authority. It proposes products; server code enforces all spending limits, categories, and approval thresholds.
+3. **Exact-Intent Approval**: Human approvals cryptographically bind to a canonical SHA-256 digest of intent parameters. Price changes or policy updates invalidate prior approvals.
+4. **Atomic Budget Reservation**: Budget availability check and reservation insertion run inside SQLite serialized write transactions (`BEGIN IMMEDIATE`) before calling payment adapters.
+5. **HMAC-SHA256 Signatures**: Standard checkout callbacks and webhooks verify HMAC signatures using timing-safe comparisons before any state transition.
+6. **Authoritative Provider Verification**: The application verifies that payment status is `'captured'` on the Razorpay API; authorized payments remain pending.
+7. **Webhook Deduplication & Race Handling**: Webhooks deduplicate on `(provider, event_id)` and retain unmatched events when notifications arrive before local order persistence.
+8. **Lost Callback Recovery**: Operators can refresh provider status on demand to recover missed browser callbacks.
+9. **Crash Recovery**: Stale executing intents recover to `UNKNOWN` without creating duplicate orders; reservations remain held for reconciliation.
 
 ---
 
@@ -57,83 +122,41 @@ BoundPay is a deterministic authorization, persistence, and state management pla
 
 ### 2. Setup Environment
 ```bash
-# Copy placeholder environment configuration
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-### 3. Install Dependencies & Build Native SQLite Addon
+### 3. Initialize & Seed Database
 ```bash
-pnpm install
+pnpm run db:reset
 ```
+Default credentials:
+- **Username**: `operator`
+- **Password**: `BoundPayPass123!`
 
-### 4. Database Initialization (Safe Seed)
+### 4. Run Automated Test Suite
 ```bash
-pnpm run db:seed
-```
-*Note: `db:seed` is idempotent and safe; it will never destroy financial history if run repeatedly.*
-
-### 5. Running Tests
-
-#### Run Unit, Property, and Database Integration Tests
-```bash
+# Run all 129 Vitest unit, contract, signature, and integration tests
 pnpm test
-```
-Runs Vitest across all 7 test suites (77 tests passed):
-- Unit & boundary tests (`test/unit/money.test.ts`, `test/unit/policy.test.ts`, `test/unit/state-machine.test.ts`, `test/unit/intent-canonical.test.ts`)
-- Property-based tests (`test/property/financial-invariants.prop.test.ts`)
-- Database concurrency & transactions (`test/integration/db-concurrency.test.ts`)
-- Authentication & HTTP security (`test/integration/auth-http.test.ts`)
 
-#### Run Playwright End-to-End Browser Tests
-```bash
+# Run all 10 Playwright E2E browser scenarios
 pnpm run test:e2e
-```
-Executes all 8 browser scenarios against the Next.js server with Playwright Chromium.
 
-#### Typecheck and Lint
-```bash
-pnpm run typecheck
+# Run linting and TypeScript checks
 pnpm run lint
+pnpm run typecheck
 ```
 
-#### Production Build
+### 5. Start Application
 ```bash
 pnpm run build
 pnpm start
 ```
+Visit `http://localhost:3000` to interact with the BoundPay operator dashboard.
 
 ---
 
-## Operator Credentials
+## Documentation Links
 
-For local testing and browser evaluation:
-- **URL**: `http://localhost:3000/login`
-- **Username**: `operator`
-- **Password**: `BoundPayPass123!`
-
----
-
-## Manual Walkthrough
-
-1. **Sign In**: Navigate to `/login` and sign in with `operator` / `BoundPayPass123!`.
-2. **Shop View (`/shop`)**:
-   - Inspect the **Server-Controlled Catalog** showing Mechanical Keyboard (₹2,799), Wireless Mouse (₹1,499), Systems Engineering Book (₹899), and Support Subscription (₹12,999).
-   - Click fixture **"2. Wireless Mouse x1"** (₹1,499) &rarr; Click **"Submit Proposal to Policy Engine"** &rarr; Notice state is `READY FOR CHECKOUT` because ₹1,499 is within the ₹2,500 auto-approval threshold &rarr; Click **"Execute Atomic Reservation & Mock Checkout"** &rarr; Payment confirmed immediately with Mock Order and Payment IDs!
-   - Click fixture **"1. Mechanical Keyboard x1"** (₹2,799) &rarr; Submit proposal &rarr; State transitions to `NEEDS HUMAN APPROVAL` because ₹2,799 exceeds the ₹2,500 threshold &rarr; Click **"Human Operator Approve"** &rarr; State updates to `OPERATOR APPROVED` &rarr; Click checkout to complete payment.
-   - Click fixture **"4. Support Plan Subscription"** &rarr; Submit proposal &rarr; Immediately `POLICY BLOCKED` because subscriptions are strictly prohibited by policy.
-   - Select **"Simulate Bank Rejection"** or **"Simulate Gateway Timeout"** in the Mock Fault Injection dropdown to verify that timeouts preserve budget reservations in state `UNKNOWN` while definite rejections transition to `BLOCKED`.
-3. **Policy View (`/policy`)**:
-   - Inspect the **Daily Budget**, **Confirmed Spend Today (Asia/Kolkata)**, **Active Reservations**, and **Remaining Budget** cards.
-   - Note the financial protection notice: the engine strictly rejects budget reductions below currently committed funds.
-   - Update limits or allowed categories and click **"Save & Publish New Policy Version"** to increment the policy version.
-4. **Activity View (`/activity`)**:
-   - View the chronological append-only audit stream tracking every proposal, policy check, state transition, and reservation.
-   - Click **"Export Audit JSON"** to download the complete audit trail as a JSON file.
-
----
-
-## Persistent Documentation
-
-Detailed architectural and verification documentation:
-- [`docs/BOUNDPay_SPEC.md`](./docs/BOUNDPay_SPEC.md) – Authoritative specification covering trust boundaries, financial invariants, state machine, database schema, and API contracts.
-- [`docs/PHASE_1_REPORT.md`](./docs/PHASE_1_REPORT.md) – Verification report detailing test results, concurrency testing methodology, invariants, and implementation details.
+- **Phase 1 Implementation Report**: [`docs/PHASE_1_REPORT.md`](docs/PHASE_1_REPORT.md)
+- **Phase 2 Implementation Report**: [`docs/PHASE_2_REPORT.md`](docs/PHASE_2_REPORT.md)
+- **Complete Architecture Specification**: [`docs/BOUNDPay_SPEC.md`](docs/BOUNDPay_SPEC.md)

@@ -10,9 +10,10 @@ import {
   CreditCard,
   RefreshCw,
   ShoppingBag,
-  ExternalLink,
   Info,
   Layers,
+  Sparkles,
+  Bot,
 } from 'lucide-react';
 import { Product } from '@/domain/catalog';
 import { PolicyEvaluation } from '@/domain/policy';
@@ -27,11 +28,19 @@ export default function ShopPage() {
   const [reason, setReason] = useState<string>('Developer workspace upgrade');
   const [faultInjection, setFaultInjection] = useState<string>('NONE');
 
+  // Phase 2 Agent & Payment states
+  const [shoppingRequest, setShoppingRequest] = useState<string>(
+    'I need a high-performance mechanical keyboard for coding'
+  );
+  const [paymentAdapterMode, setPaymentAdapterMode] = useState<'MOCK' | 'RAZORPAY_TEST'>('MOCK');
+  const [agentMode, setAgentMode] = useState<string>('fixture');
+
   const [loading, setLoading] = useState<boolean>(false);
   const [activeIntent, setActiveIntent] = useState<PurchaseIntent | null>(null);
   const [activeEvaluation, setActiveEvaluation] = useState<PolicyEvaluation | null>(null);
   const [executionResult, setExecutionResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // Load catalog
   const fetchProducts = async () => {
@@ -55,6 +64,22 @@ export default function ShopPage() {
   const totalAmountPaise = unitPricePaise * quantity;
   const purchaseBudgetPaise = Math.round(purchaseBudgetRupees * 100);
 
+  // Helper to dynamically load Razorpay script
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   // Quick Fixture preset handler
   const handleApplyFixture = (
     productId: string,
@@ -68,12 +93,61 @@ export default function ShopPage() {
     setReason(fixtureReason);
     setExecutionResult(null);
     setErrorMessage(null);
+    setInfoMessage(null);
   };
 
-  // Propose purchase
+  // Ask AI Shopping Agent (Phase 2)
+  const handleAskShoppingAgent = async () => {
+    setLoading(true);
+    setErrorMessage(null);
+    setInfoMessage(null);
+    setExecutionResult(null);
+
+    try {
+      const res = await fetch('/api/agent/propose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopping_request: shoppingRequest,
+          purchase_budget_paise: purchaseBudgetPaise,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'AI Shopping Agent failed');
+      }
+
+      if (!data.suitable) {
+        setErrorMessage(
+          `AI Agent: No suitable catalog item found within budget. Rationale: ${data.reason}`
+        );
+        setActiveIntent(null);
+        setActiveEvaluation(null);
+        return;
+      }
+
+      setActiveIntent(data.intent);
+      setActiveEvaluation(data.evaluation);
+      if (data.intent?.product_id) {
+        setSelectedProductId(data.intent.product_id);
+        setQuantity(data.intent.quantity || 1);
+      }
+      setInfoMessage(
+        `AI Shopping Agent proposed: ${data.intent.product_id} (${data.source_mode || 'MODEL'}) - ${data.reason}`
+      );
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error communicating with AI Shopping Agent');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manual Propose purchase
   const handleProposePurchase = async () => {
     setLoading(true);
     setErrorMessage(null);
+    setInfoMessage(null);
     setExecutionResult(null);
 
     const idempotencyKey = `user-prop-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -87,7 +161,7 @@ export default function ShopPage() {
           quantity,
           purchase_budget_paise: purchaseBudgetPaise,
           idempotency_key: idempotencyKey,
-          source_mode: 'FIXTURE',
+          source_mode: 'MANUAL',
           reason,
           fault_injection: faultInjection,
         }),
@@ -95,7 +169,7 @@ export default function ShopPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || data.error || 'Failed to create proposal');
+        throw new Error(data.message || data.error || 'Failed to submit proposal');
       }
 
       setActiveIntent(data.intent);
@@ -155,11 +229,71 @@ export default function ShopPage() {
     }
   };
 
+  // Open Razorpay Standard Checkout
+  const launchRazorpayCheckout = async (orderId: string, keyId: string, intent: PurchaseIntent) => {
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      setErrorMessage('Failed to load Razorpay Standard Checkout script. Check connection.');
+      return;
+    }
+
+    const options = {
+      key: keyId,
+      amount: intent.total_amount_paise,
+      currency: intent.currency,
+      name: 'BoundPay Store',
+      description: selectedProduct?.name || 'Order Checkout',
+      order_id: orderId,
+      notes: {
+        intent_id: intent.id,
+      },
+      handler: async (response: {
+        razorpay_payment_id: string;
+        razorpay_order_id: string;
+        razorpay_signature: string;
+      }) => {
+        setLoading(true);
+        try {
+          const confirmRes = await fetch(`/api/intents/${intent.id}/confirm-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(response),
+          });
+          const confirmData = await confirmRes.json();
+          if (!confirmRes.ok) {
+            throw new Error(confirmData.message || confirmData.error || 'Payment verification failed');
+          }
+          setExecutionResult(confirmData);
+          if (confirmData.intent) setActiveIntent(confirmData.intent);
+          setInfoMessage('Razorpay payment verified and confirmed on server!');
+        } catch (e: any) {
+          setErrorMessage(e.message || 'Payment confirmation failed');
+        } finally {
+          setLoading(false);
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          setInfoMessage(
+            'Razorpay Checkout modal closed. Your atomic budget reservation is held safely. You can complete payment or refresh status.'
+          );
+        },
+      },
+      theme: {
+        color: '#2563EB',
+      },
+    };
+
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
+  };
+
   // Checkout execution
   const handleExecuteCheckout = async () => {
     if (!activeIntent) return;
     setLoading(true);
     setErrorMessage(null);
+    setInfoMessage(null);
 
     try {
       const res = await fetch(`/api/intents/${activeIntent.id}/execute`, {
@@ -173,7 +307,22 @@ export default function ShopPage() {
       }
 
       setExecutionResult(data.result);
-      setActiveIntent(data.result.intent);
+      if (data.result.intent) {
+        setActiveIntent(data.result.intent);
+      }
+
+      // If Razorpay Test Mode and order created, launch modal
+      if (
+        data.result.status === 'ORDER_CREATED' &&
+        data.result.providerOrderId &&
+        data.result.keyId
+      ) {
+        await launchRazorpayCheckout(
+          data.result.providerOrderId,
+          data.result.keyId,
+          data.result.intent
+        );
+      }
     } catch (err: any) {
       setErrorMessage(err.message || 'Execution error');
     } finally {
@@ -181,22 +330,68 @@ export default function ShopPage() {
     }
   };
 
+  // Refresh Provider Status
+  const handleRefreshStatus = async () => {
+    if (!activeIntent) return;
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`/api/intents/${activeIntent.id}/refresh-status`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Status refresh failed');
+      setExecutionResult(data);
+      if (data.intent) setActiveIntent(data.intent);
+      setInfoMessage(`Provider status: ${data.status} - ${data.message}`);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to refresh provider status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reconcile Uncertain Intent
+  const handleReconcile = async () => {
+    if (!activeIntent) return;
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`/api/intents/${activeIntent.id}/reconcile`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Reconciliation failed');
+      setExecutionResult(data);
+      if (data.intent) setActiveIntent(data.intent);
+      setInfoMessage(`Reconciliation: ${data.message}`);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Reconciliation check failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStateBadge = (state: string) => {
     switch (state) {
-      case 'PAYMENT_CONFIRMED':
-        return <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold px-2.5 py-0.5 rounded text-xs">PAYMENT CONFIRMED</span>;
       case 'READY':
-        return <span className="bg-blue-100 text-blue-800 border border-blue-300 font-semibold px-2.5 py-0.5 rounded text-xs">READY FOR CHECKOUT</span>;
-      case 'APPROVED':
-        return <span className="bg-indigo-100 text-indigo-800 border border-indigo-300 font-semibold px-2.5 py-0.5 rounded text-xs">OPERATOR APPROVED</span>;
+        return <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold px-2.5 py-0.5 rounded text-xs">READY FOR CHECKOUT</span>;
       case 'NEEDS_APPROVAL':
-        return <span className="bg-amber-100 text-amber-800 border border-amber-300 font-semibold px-2.5 py-0.5 rounded text-xs">NEEDS HUMAN APPROVAL</span>;
+        return <span className="bg-amber-100 text-amber-900 border border-amber-300 font-semibold px-2.5 py-0.5 rounded text-xs">NEEDS HUMAN APPROVAL</span>;
+      case 'APPROVED':
+        return <span className="bg-blue-100 text-blue-800 border border-blue-300 font-semibold px-2.5 py-0.5 rounded text-xs">OPERATOR APPROVED</span>;
+      case 'DECLINED':
+        return <span className="bg-rose-100 text-rose-800 border border-rose-300 font-semibold px-2.5 py-0.5 rounded text-xs">OPERATOR DECLINED</span>;
       case 'BLOCKED':
         return <span className="bg-red-100 text-red-800 border border-red-300 font-semibold px-2.5 py-0.5 rounded text-xs">POLICY BLOCKED</span>;
-      case 'DECLINED':
-        return <span className="bg-rose-100 text-rose-800 border border-rose-300 font-semibold px-2.5 py-0.5 rounded text-xs">DECLINED</span>;
+      case 'EXECUTING':
+        return <span className="bg-indigo-100 text-indigo-800 border border-indigo-300 font-semibold px-2.5 py-0.5 rounded text-xs">EXECUTING RESERVATION</span>;
+      case 'ORDER_CREATED':
+        return <span className="bg-cyan-100 text-cyan-800 border border-cyan-300 font-semibold px-2.5 py-0.5 rounded text-xs">ORDER CREATED (AWAITING CHECKOUT)</span>;
+      case 'PAYMENT_CONFIRMED':
+        return <span className="bg-emerald-600 text-white font-bold px-2.5 py-0.5 rounded text-xs">PAYMENT CONFIRMED</span>;
       case 'UNKNOWN':
-        return <span className="bg-purple-100 text-purple-800 border border-purple-300 font-semibold px-2.5 py-0.5 rounded text-xs">UNKNOWN (RESERVATION HELD)</span>;
+        return <span className="bg-purple-100 text-purple-800 border border-purple-300 font-semibold px-2.5 py-0.5 rounded text-xs">PROVIDER UNCERTAIN</span>;
       case 'EXPIRED':
         return <span className="bg-slate-200 text-slate-700 border border-slate-300 font-semibold px-2.5 py-0.5 rounded text-xs">EXPIRED</span>;
       default:
@@ -206,7 +401,7 @@ export default function ShopPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner with Phase 1 Badges */}
+      {/* Top Banner with Phase Badges */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
@@ -214,7 +409,7 @@ export default function ShopPage() {
             <span>Agentic Commerce Shop & Bounded Authority</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Phase 1: Deterministic policy evaluation, exact-intent approvals, atomic budget reservations, and mock payment adapter.
+            Phase 1 & 2: Natural-language agent proposals, deterministic spending policy gates, exact-intent approvals, and Razorpay TEST standard checkout.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -226,8 +421,19 @@ export default function ShopPage() {
             <Shield className="w-3.5 h-3.5 text-blue-600" />
             <span>DETERMINISTIC BOUNDED AUTHORITY</span>
           </span>
+          <span className="bg-indigo-100 text-indigo-900 text-xs font-semibold px-3 py-1 rounded-full border border-indigo-300 flex items-center space-x-1">
+            <Bot className="w-3.5 h-3.5 text-indigo-600" />
+            <span>OPENAI AGENT PROPOSALS</span>
+          </span>
         </div>
       </div>
+
+      {infoMessage && (
+        <div className="p-3.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-center space-x-2">
+          <Info className="w-4 h-4 flex-shrink-0 text-blue-600" />
+          <div>{infoMessage}</div>
+        </div>
+      )}
 
       {errorMessage && (
         <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm flex items-start space-x-2">
@@ -239,7 +445,7 @@ export default function ShopPage() {
         </div>
       )}
 
-      {/* Grid: Left Column (Catalog & Fixtures), Right Column (Proposal & Authority) */}
+      {/* Grid: Left Column (Catalog & Presets), Right Column (AI Agent & Authority) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Product Catalog & Presets */}
         <div className="lg:col-span-6 space-y-6">
@@ -281,13 +487,11 @@ export default function ShopPage() {
                         {prod.category}
                       </span>
                       {prod.is_subscription ? (
-                        <span className="bg-purple-100 text-purple-700 font-semibold px-1.5 py-0.5 rounded">
+                        <span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">
                           Subscription
                         </span>
                       ) : (
-                        <span className="text-slate-400 font-mono">
-                          {prod.unit_price_paise} paise
-                        </span>
+                        <span className="text-slate-400 font-mono">{prod.unit_price_paise} paise</span>
                       )}
                     </div>
                   </div>
@@ -296,7 +500,7 @@ export default function ShopPage() {
             </div>
           </div>
 
-          {/* Quick Test Fixtures */}
+          {/* Test Fixture Scenarios */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">
               Phase 1 Test Fixture Scenarios
@@ -410,8 +614,62 @@ export default function ShopPage() {
           </div>
         </div>
 
-        {/* Right: Proposal Builder & Financial Authority Panel */}
+        {/* Right: AI Shopping Agent & Proposal Control */}
         <div className="lg:col-span-6 space-y-6">
+          {/* Phase 2: AI Shopping Agent Card */}
+          <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-5 rounded-xl border border-indigo-700 shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-indigo-400" />
+                <h2 className="text-sm font-bold tracking-wider uppercase">AI Shopping Agent</h2>
+              </div>
+              <span className="text-[11px] bg-indigo-800 text-indigo-200 px-2 py-0.5 rounded font-mono">
+                {process.env.NEXT_PUBLIC_AGENT_MODE === 'live' ? 'LIVE (OpenAI)' : 'FIXTURE / MOCK'}
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 mb-3">
+              Enter what you want to buy. The agent reasons over untrusted descriptions and proposes a catalog product. Deterministic policy gates strictly enforce limits.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-indigo-200 mb-1">
+                  Natural Language Shopping Request
+                </label>
+                <input
+                  type="text"
+                  value={shoppingRequest}
+                  onChange={(e) => setShoppingRequest(e.target.value)}
+                  placeholder="e.g. Ergonomic wireless mouse for travel under ₹2,000"
+                  className="w-full p-2.5 rounded bg-slate-800 border border-indigo-700 text-white text-xs placeholder-slate-400 focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1">
+                  <label className="block text-[11px] text-indigo-300">Purchase Budget (₹)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={purchaseBudgetRupees}
+                    onChange={(e) => setPurchaseBudgetRupees(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full p-1.5 rounded bg-slate-800 border border-indigo-700 text-white text-xs"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAskShoppingAgent}
+                  disabled={loading}
+                  className="mt-4 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow"
+                >
+                  <Bot className="w-4 h-4" />
+                  <span>Ask AI Shopping Agent to Propose</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Proposal Config Card */}
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center space-x-1.5">
@@ -454,12 +712,12 @@ export default function ShopPage() {
                     type="number"
                     min={1}
                     value={purchaseBudgetRupees}
-                    onChange={(e) => setPurchaseBudgetRupees(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2 border border-slate-300 rounded text-xs font-medium focus:ring-2 focus:ring-blue-500 font-mono"
+                    onChange={(e) => setPurchaseBudgetRupees(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full p-2 border border-slate-300 rounded text-xs font-medium focus:ring-2 focus:ring-blue-500"
                   />
-                  <div className="text-[10px] text-slate-500 mt-0.5">
+                  <span className="text-[11px] text-slate-400 font-mono mt-0.5 block">
                     = {purchaseBudgetPaise.toLocaleString('en-IN')} paise
-                  </div>
+                  </span>
                 </div>
 
                 <div>
@@ -469,7 +727,7 @@ export default function ShopPage() {
                   <select
                     value={faultInjection}
                     onChange={(e) => setFaultInjection(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded text-xs font-medium focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full p-2 border border-slate-300 rounded text-xs font-medium focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="NONE">None (Happy Path)</option>
                     <option value="SIMULATE_REJECTION">Simulate Bank Rejection</option>
@@ -489,13 +747,13 @@ export default function ShopPage() {
                   type="text"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500"
                   placeholder="AI prompt or rationale..."
+                  className="w-full p-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              {/* Exact Total Computation */}
-              <div className="bg-slate-900 text-white p-3 rounded-lg flex items-center justify-between">
+              {/* Live Cost Calculation Display */}
+              <div className="p-3 bg-slate-900 rounded-lg text-white flex items-center justify-between">
                 <div>
                   <div className="text-xs text-slate-400">Server-Computed Total:</div>
                   <div className="text-xs text-slate-300 font-mono">
@@ -524,10 +782,17 @@ export default function ShopPage() {
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b pb-3">
                 <div>
-                  <span className="text-xs text-slate-400">Intent ID:</span>
-                  <div className="font-mono text-xs font-bold text-slate-800 truncate max-w-xs">
-                    {activeIntent.id}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-slate-400">Intent ID:</span>
+                    <span className="font-mono text-xs font-bold text-slate-800 truncate max-w-xs">
+                      {activeIntent.id}
+                    </span>
                   </div>
+                  {activeIntent.source_mode && (
+                    <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded mt-0.5 inline-block font-mono">
+                      Source: {activeIntent.source_mode} {activeIntent.model_name ? `(${activeIntent.model_name})` : ''}
+                    </span>
+                  )}
                 </div>
                 <div>{getStateBadge(activeIntent.state)}</div>
               </div>
@@ -602,6 +867,32 @@ export default function ShopPage() {
                   </button>
                 )}
 
+                {activeIntent.state === 'ORDER_CREATED' && (
+                  <div className="w-full space-y-2">
+                    <div className="p-3 rounded-lg bg-cyan-50 border border-cyan-200 text-cyan-950 text-xs">
+                      <div className="font-bold flex items-center space-x-1">
+                        <Clock className="w-4 h-4 text-cyan-600" />
+                        <span>Order Created on Provider</span>
+                      </div>
+                      <div className="mt-1 font-mono text-[11px]">
+                        Order ID: {activeIntent.provider_order_id || executionResult?.providerOrderId || 'N/A'}<br />
+                        Receipt: {activeIntent.receipt || 'N/A'}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRefreshStatus}
+                        disabled={loading}
+                        className="flex-1 py-2 px-3 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Refresh Provider Status</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {activeIntent.state === 'PAYMENT_CONFIRMED' && (
                   <div className="w-full p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
                     <div className="font-bold flex items-center space-x-1">
@@ -609,20 +900,38 @@ export default function ShopPage() {
                       <span>Payment Verified & Confirmed [MOCK_PAYMENT]</span>
                     </div>
                     <div className="mt-1 font-mono text-[11px] text-emerald-800">
-                      Provider Order: {executionResult?.providerOrderId || 'N/A'}<br />
-                      Provider Payment: {executionResult?.providerPaymentId || 'N/A'}
+                      Provider Order: {activeIntent.provider_order_id || executionResult?.providerOrderId || 'N/A'}<br />
+                      Provider Payment: {activeIntent.provider_payment_id || executionResult?.providerPaymentId || 'N/A'}
                     </div>
                   </div>
                 )}
 
                 {activeIntent.state === 'UNKNOWN' && (
-                  <div className="w-full p-3 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 text-xs">
+                  <div className="w-full p-3 rounded-lg bg-purple-50 border border-purple-200 text-purple-900 text-xs space-y-2">
                     <div className="font-bold flex items-center space-x-1">
                       <AlertTriangle className="w-4 h-4 text-purple-600" />
                       <span>Provider Response Indeterminate</span>
                     </div>
-                    <div className="mt-1 text-[11px] text-purple-800">
+                    <div className="text-[11px] text-purple-800">
                       {activeIntent.failure_reason || 'Gateway timeout or lost response. Budget reservation remains durably held.'}
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleRefreshStatus}
+                        disabled={loading}
+                        className="py-1.5 px-3 rounded bg-purple-700 hover:bg-purple-600 text-white font-medium text-xs"
+                      >
+                        Refresh Status
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReconcile}
+                        disabled={loading}
+                        className="py-1.5 px-3 rounded bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium text-xs"
+                      >
+                        Reconcile by Receipt
+                      </button>
                     </div>
                   </div>
                 )}

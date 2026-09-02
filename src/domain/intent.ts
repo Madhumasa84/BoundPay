@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { CURRENCY, Currency } from './money';
 import { IntentState, IntentStates } from './state-machine';
 
-export type SourceMode = 'MANUAL' | 'FIXTURE' | 'AGENT_PROPOSAL';
+export type SourceMode = 'MANUAL' | 'FIXTURE' | 'LIVE_MODEL' | 'AGENT_PROPOSAL';
 export type PaymentAdapterMode = 'MOCK' | 'RAZORPAY_TEST';
 
 export interface CanonicalIntentPayload {
@@ -42,6 +42,11 @@ export interface PurchaseIntent {
   quote_expiry: string;
   source_mode: SourceMode;
   payment_adapter_mode: PaymentAdapterMode;
+  model_provider?: string | null;
+  model_name?: string | null;
+  receipt?: string | null;
+  provider_order_id?: string | null;
+  provider_payment_id?: string | null;
   state: IntentState;
   failure_reason: string | null;
   created_at: string;
@@ -88,7 +93,9 @@ export const CreateProposalRequestSchema = z.object({
   quantity: z.number().int().min(1).max(10),
   purchase_budget_paise: z.number().int().positive('Purchase budget must be a positive integer in paise'),
   idempotency_key: z.string().min(1).max(128),
-  source_mode: z.enum(['MANUAL', 'FIXTURE', 'AGENT_PROPOSAL']).default('MANUAL'),
+  source_mode: z.enum(['MANUAL', 'FIXTURE', 'LIVE_MODEL', 'AGENT_PROPOSAL']).default('MANUAL'),
+  model_provider: z.string().optional(),
+  model_name: z.string().optional(),
   reason: z.string().max(1024).optional().default(''),
   fault_injection: z.enum([
     'NONE',
@@ -101,3 +108,4 @@ export const CreateProposalRequestSchema = z.object({
 });
 
 export type CreateProposalRequest = z.infer<typeof CreateProposalRequestSchema>;
+export type CreateProposalInput = z.input<typeof CreateProposalRequestSchema>;

@@ -31,6 +31,8 @@
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.39.0",
     "next": "14.2.24",
+    "openai": "^7.9.0",
+    "razorpay": "^2.9.8",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "tailwind-merge": "^3.6.0",

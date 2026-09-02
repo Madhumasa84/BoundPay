@@ -75,6 +75,11 @@ CREATE TABLE IF NOT EXISTS purchase_intents (
   quote_expiry TEXT NOT NULL,
   source_mode TEXT NOT NULL,
   payment_adapter_mode TEXT NOT NULL,
+  model_provider TEXT,
+  model_name TEXT,
+  receipt TEXT,
+  provider_order_id TEXT,
+  provider_payment_id TEXT,
   state TEXT NOT NULL,
   failure_reason TEXT,
   created_at TEXT NOT NULL,
@@ -129,10 +134,52 @@ CREATE TABLE IF NOT EXISTS audit_events (
 CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_audit_intent ON audit_events(intent_id);
 CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_events(event_type);
+
+CREATE TABLE IF NOT EXISTS webhook_events (
+  id TEXT PRIMARY KEY,
+  provider TEXT NOT NULL DEFAULT 'RAZORPAY',
+  event_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  intent_id TEXT,
+  order_id TEXT,
+  payment_id TEXT,
+  payload_json TEXT NOT NULL,
+  status TEXT NOT NULL,
+  received_at TEXT NOT NULL,
+  processed_at TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_webhook_events_unique ON webhook_events(provider, event_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_order ON webhook_events(order_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_status ON webhook_events(status);
 `;
 
 export function runMigrations(sqlite: Database.Database): void {
   sqlite.exec(MIGRATION_SQL);
+
+  // Safely alter purchase_intents for any existing database files
+  const columns = sqlite.pragma('table_info(purchase_intents)') as Array<{ name: string }>;
+  const colNames = new Set(columns.map((c) => c.name));
+
+  const additions = [
+    { name: 'model_provider', type: 'TEXT' },
+    { name: 'model_name', type: 'TEXT' },
+    { name: 'receipt', type: 'TEXT' },
+    { name: 'provider_order_id', type: 'TEXT' },
+    { name: 'provider_payment_id', type: 'TEXT' },
+  ];
+
+  for (const col of additions) {
+    if (!colNames.has(col.name)) {
+      try {
+        sqlite.exec(`ALTER TABLE purchase_intents ADD COLUMN ${col.name} ${col.type}`);
+      } catch {}
+    }
+  }
+
+  try {
+    sqlite.exec('CREATE INDEX IF NOT EXISTS idx_intents_order_id ON purchase_intents(provider_order_id);');
+  } catch {}
 }
 
 if (require.main === module) {
