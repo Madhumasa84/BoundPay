@@ -8,6 +8,7 @@ import {
   AgentInvocationError,
 } from '@/services/agent.service';
 import { createProposal } from '@/services/purchase.service';
+import { resolvePaymentAdapterMode } from '@/domain/intent';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,8 +43,7 @@ export async function POST(req: Request) {
     const idempotencyKey =
       validated.idempotency_key || `agent_prop_${crypto.randomUUID()}`;
 
-    const paymentAdapterMode =
-      process.env.PAYMENT_ADAPTER_MODE === 'RAZORPAY_TEST' ? 'RAZORPAY_TEST' : 'MOCK';
+    const paymentAdapterMode = resolvePaymentAdapterMode();
 
     const proposal = createProposal(
       auth.operator.operatorId,

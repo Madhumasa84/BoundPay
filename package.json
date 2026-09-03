@@ -17,6 +17,7 @@
     "test:state": "vitest run test/property/state-machine-sequences.prop.test.ts",
     "eval:manifest": "tsx evaluation/generate-manifest.ts",
     "eval:latency": "tsx evaluation/benchmark-policy.ts",
+    "eval:live": "tsx evaluation/run-live-model-evaluation.ts",
     "test:e2e": "CONFIRM_RESET=true tsx src/infrastructure/db/reset.ts && playwright test",
     "db:migrate": "tsx src/infrastructure/db/migrate.ts",
     "db:seed": "tsx src/infrastructure/db/seed.ts",

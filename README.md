@@ -2,9 +2,10 @@
 
 BoundPay demonstrates bounded financial authority for agentic commerce. A model or fixture may propose one catalog item, but it cannot set prices, approve a purchase, reserve budget, create a provider order, or confirm payment. Those operations remain in deterministic server services backed by SQLite.
 
-This repository is a buildathon evaluation build, not a production payment product. Its scope is one operator, one approved merchant, INR integer-paise accounting, one application instance, OpenAI proposal selection, and Razorpay Standard Checkout in TEST mode.
+This repository is a buildathon evaluation build, not a production payment product. Its scope is one operator, one approved merchant, INR integer-paise accounting, one application instance, Sarvam AI (sarvam-105b) proposal selection, and Razorpay Standard Checkout in TEST mode.
 
 ## What is implemented
+
 
 - Server-owned, versioned catalog and spending policy.
 - Explicit per-purchase budget and deterministic transaction, category, merchant, subscription, expiry, and daily-budget checks.
@@ -34,7 +35,7 @@ Open `http://localhost:3000`. Local seed credentials are `operator` / `BoundPayP
 Important environment values:
 
 - `DATABASE_PATH`: persistent SQLite file path.
-- `AGENT_MODE=fixture|live`; live requires `OPENAI_API_KEY` and optional `OPENAI_MODEL`.
+- `AGENT_MODE=fixture|live`; live requires `SARVAM_API_KEY` (model `sarvam-105b` via `/v1/chat/completions`) or optional `OPENAI_API_KEY`.
 - `PAYMENT_ADAPTER_MODE=MOCK|RAZORPAY_TEST`; Razorpay TEST requires test key ID/secret and webhook secret. `rzp_live_` keys are rejected.
 - `QUOTE_VALIDITY_SECONDS`: exact-intent quote lifetime.
 
@@ -66,9 +67,9 @@ pnpm run eval:latency
 pnpm audit --prod
 ```
 
-Phase 3 verified 238/238 Vitest tests and 15/15 Chromium Playwright tests. The 100-case deterministic manifest issued 182 application-level requests through real services and isolated SQLite databases; the only mocked component was the external payment provider. It recorded 100 passes, no skipped cases, no unexpected provider order calls, no duplicate order creation, and no ledger mismatch within those cases. The production dependency audit reported no known vulnerabilities after upgrading Next.js and overriding vulnerable transitive versions.
+Phase 3 verified 268/268 Vitest tests across 17 files and 15/15 Chromium Playwright tests. Tests include 5 cross-process concurrency scenarios using worker_threads and SharedArrayBuffer barriers to exercise real SQLite write-lock contention across independent connections, and 25 dedicated Sarvam AI provider boundary tests. The 100-case deterministic manifest issued 182 application-level requests through real services and isolated SQLite databases; the only mocked component was the external payment provider. It recorded 100 passes, no skipped cases, no unexpected provider order calls, no duplicate order creation, and no ledger mismatch within those cases. The production dependency audit reported no known vulnerabilities after upgrading Next.js and overriding vulnerable transitive versions.
 
-Live OpenAI evaluation: 0 executed / 20 skipped (credential unavailable). Real Razorpay TEST transactions: 0 (credentials and manual Checkout unavailable). These pending integrations mean the project is not yet fully submission-ready.
+Live model evaluation (Sarvam AI sarvam-105b): 20/20 executed, 0 skipped. Strict JSON Schema output verified with Zod business validation. 19/20 requests satisfied, 2 proposed policy violations (subscriptions) both strictly blocked by the deterministic policy gate, 0 unexpected payment provider order calls, median latency 6929 ms. Real Razorpay TEST transactions: 1 completed and verified with test credentials (order_TXcjbyB4QUPgxL, payment pay_TXcmIeKNdSAV4M, ₹2,799 captured, 1 confirmed ledger row, timing-safe HMAC signature verified, authoritative provider lookup confirmed). See [docs/RAZORPAY_TEST_VERIFICATION.md](docs/RAZORPAY_TEST_VERIFICATION.md). Razorpay Test Dashboard record is available for operator confirmation; actual provider webhook delivery remains pending an authorized public HTTPS domain.
 
 ## Deployment preparation
 

@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm';
 import { getDb, schema } from '@/infrastructure/db';
-import { CreateProposalRequestSchema } from '@/domain/intent';
+import { CreateProposalRequestSchema, resolvePaymentAdapterMode } from '@/domain/intent';
 import { createProposal } from '@/services/purchase.service';
 import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
 
@@ -16,10 +16,11 @@ export async function POST(req: Request) {
     // Explicit security rule: reject or ignore client-supplied approval flags, prices, merchants
     const validatedRequest = CreateProposalRequestSchema.parse(rawBody);
 
+    const paymentAdapterMode = resolvePaymentAdapterMode();
     const result = createProposal(
       auth.operator.operatorId,
       validatedRequest,
-      'MOCK'
+      paymentAdapterMode
     );
 
     return jsonResponse(result, result.isExisting ? 200 : 201);

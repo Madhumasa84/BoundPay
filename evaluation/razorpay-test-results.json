@@ -1,7 +1,75 @@
 {
   "schema_version": 1,
-  "status": "PENDING_CREDENTIALS_AND_MANUAL_CHECKOUT",
-  "real_test_transactions_completed": 0,
-  "mock_transactions_completed": 40,
-  "note": "Adapter contract tests use stubbed HTTP and are not real Razorpay TEST transactions. No dashboard record was available for verification."
+  "status": "COMPLETED_REAL_RAZORPAY_TEST_CHECKOUT",
+  "evaluated_at": "2026-09-03T16:08:34.749Z",
+  "provider": "razorpay",
+  "mode": "RAZORPAY_TEST",
+  "key_id_prefix": "rzp_test_...B8d",
+  "real_test_transactions_completed": 1,
+  "evidence": {
+    "intent_id": "d35445ee-e077-4337-bf97-4d8123fc8b0f",
+    "product_id": "prod_keyboard",
+    "product_name": "Mechanical Keyboard",
+    "quantity": 1,
+    "amount_paise": 279900,
+    "currency": "INR",
+    "purchase_budget_paise": 300000,
+    "canonical_request_hash": "8b08d6a4ae13b0c25fbe4378a9bbef4453f78ae74dd4bb23c583121aef9464ae",
+    "operator_id": "a9b5ad08-5029-400c-a843-14639ae3595c",
+    "operator_approval": {
+      "approval_id": "ed57fe66-d888-457a-a3f5-760998db087f",
+      "status": "APPROVED",
+      "approved_at": "2026-09-03T16:05:35.542Z"
+    },
+    "provider_order": {
+      "id": "order_TXcjbyB4QUPgxL",
+      "amount": 279900,
+      "amount_paid": 279900,
+      "amount_due": 0,
+      "currency": "INR",
+      "receipt": "rcpt_d35445eee0774337",
+      "status": "paid",
+      "notes": {
+        "intent_id": "d35445ee-e077-4337-bf97-4d8123fc8b0f",
+        "merchant_id": "demo_store"
+      }
+    },
+    "provider_payment": {
+      "id": "pay_TXcmIeKNdSAV4M",
+      "order_id": "order_TXcjbyB4QUPgxL",
+      "amount": 279900,
+      "currency": "INR",
+      "status": "captured",
+      "captured": true,
+      "method": "netbanking"
+    },
+    "spend_ledger": {
+      "id": "d847a0b9-60b3-46b7-91f5-955e742cc1df",
+      "status": "CONFIRMED",
+      "amount_paise": 279900,
+      "payment_adapter_mode": "RAZORPAY_TEST",
+      "reservation_timestamp": "2026-09-03T16:05:44.876Z",
+      "confirmation_timestamp": "2026-09-03T16:08:34.749Z",
+      "total_confirmed_ledger_rows": 1,
+      "duplicate_reservations": 0
+    },
+    "idempotency_replay": {
+      "verified": true,
+      "replayed_execution_status": "PAYMENT_CONFIRMED",
+      "replayed_message": "Repeated checkout: intent already confirmed",
+      "duplicate_orders_created": 0,
+      "duplicate_ledger_rows": 0
+    },
+    "audit_trail": [
+      { "id": 46, "event_type": "INTENT_PROPOSED", "state_before": null, "state_after": "NEEDS_APPROVAL", "amount_paise": 279900, "timestamp": "2026-09-03T16:05:24.682Z" },
+      { "id": 47, "event_type": "INTENT_APPROVED", "state_before": "NEEDS_APPROVAL", "state_after": "APPROVED", "amount_paise": 279900, "timestamp": "2026-09-03T16:05:35.546Z" },
+      { "id": 48, "event_type": "INTENT_EXECUTING", "state_before": "APPROVED", "state_after": "EXECUTING", "amount_paise": 279900, "timestamp": "2026-09-03T16:05:44.881Z" },
+      { "id": 49, "event_type": "ORDER_CREATED", "state_before": "EXECUTING", "state_after": "ORDER_CREATED", "amount_paise": 279900, "timestamp": "2026-09-03T16:05:45.500Z" },
+      { "id": 50, "event_type": "PAYMENT_CONFIRMED", "state_before": "ORDER_CREATED", "state_after": "PAYMENT_CONFIRMED", "amount_paise": 279900, "timestamp": "2026-09-03T16:08:34.768Z" }
+    ]
+  },
+  "notes": {
+    "dashboard_matching": "Pending operator inspection of Razorpay Test Dashboard for order_TXcjbyB4QUPgxL and payment pay_TXcmIeKNdSAV4M.",
+    "webhook_delivery": "Actual provider webhook delivery remains PENDING because localhost is not publicly routable over HTTPS without a tunnel. Browser-callback verification succeeded with authoritative provider payment capture lookup."
+  }
 }

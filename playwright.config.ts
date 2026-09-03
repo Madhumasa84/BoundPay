@@ -21,9 +21,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm start',
+    command: 'AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK PAYMENT_MODE=mock pnpm start',
     url: 'http://127.0.0.1:3000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 60000,
+    env: {
+      AGENT_MODE: 'fixture',
+      PAYMENT_ADAPTER_MODE: 'MOCK',
+      PAYMENT_MODE: 'mock',
+    },
   },
 });

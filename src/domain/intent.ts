@@ -6,6 +6,11 @@ import { IntentState, IntentStates } from './state-machine';
 export type SourceMode = 'MANUAL' | 'FIXTURE' | 'LIVE_MODEL' | 'AGENT_PROPOSAL';
 export type PaymentAdapterMode = 'MOCK' | 'RAZORPAY_TEST';
 
+export function resolvePaymentAdapterMode(): PaymentAdapterMode {
+  const envVal = (process.env.PAYMENT_ADAPTER_MODE || process.env.PAYMENT_MODE || '').trim().toUpperCase();
+  return envVal === 'RAZORPAY_TEST' ? 'RAZORPAY_TEST' : 'MOCK';
+}
+
 export interface CanonicalIntentPayload {
   category: string;
   currency: Currency;

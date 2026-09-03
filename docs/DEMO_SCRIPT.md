@@ -2,7 +2,7 @@
 
 ## Before recording
 
-1. Put real TEST credentials and webhook secret in the hosting environment; never show them. Set `PAYMENT_ADAPTER_MODE=RAZORPAY_TEST` and, for the model segment, `AGENT_MODE=live` plus `OPENAI_API_KEY`.
+1. Put real TEST credentials and webhook secret in the hosting environment; never show them. Set `PAYMENT_ADAPTER_MODE=RAZORPAY_TEST` and, for the model segment, `AGENT_MODE=live` plus `SARVAM_API_KEY` (`SARVAM_MODEL=sarvam-105b`).
 2. Use HTTPS, persistent SQLite storage, one application instance, and a reachable signed webhook.
 3. Run migrations/seed, typecheck, tests, build, then complete one rehearsal TEST checkout. Confirm the dashboard, audit, ledger, reload, and status refresh all match.
 4. Keep `evaluation/live-model-results.json` and `evaluation/razorpay-test-results.json` updated with sanitized actual evidence. If either integration fails, say so on camera and do not substitute fixture evidence.

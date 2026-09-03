@@ -34,6 +34,7 @@ export default function ShopPage() {
   );
   const [paymentAdapterMode, setPaymentAdapterMode] = useState<'MOCK' | 'RAZORPAY_TEST'>('MOCK');
   const [agentMode, setAgentMode] = useState<'FIXTURE' | 'LIVE_MODEL'>('FIXTURE');
+  const [runtimeKeyId, setRuntimeKeyId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [activeIntent, setActiveIntent] = useState<PurchaseIntent | null>(null);
@@ -65,8 +66,29 @@ export default function ShopPage() {
       .then((runtime) => {
         setPaymentAdapterMode(runtime.paymentMode);
         setAgentMode(runtime.agentMode);
+        if (runtime.razorpayKeyId) {
+          setRuntimeKeyId(runtime.razorpayKeyId);
+        }
       })
       .catch(() => setErrorMessage('Unable to verify server modes. Sign in again, then reload this page.'));
+
+    fetch('/api/intents')
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (data?.intents && data.intents.length > 0) {
+          const latest = data.intents[0];
+          if (['NEEDS_APPROVAL', 'APPROVED', 'READY', 'ORDER_CREATED', 'UNKNOWN'].includes(latest.state)) {
+            setActiveIntent(latest);
+            setSelectedProductId(latest.product_id);
+            setQuantity(latest.quantity);
+            setPurchaseBudgetRupees(latest.purchase_budget_paise / 100);
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId) || products[0];
@@ -482,7 +504,7 @@ export default function ShopPage() {
           </span>
           <span className="bg-indigo-100 text-indigo-900 text-xs font-semibold px-3 py-1 rounded-full border border-indigo-300 flex items-center space-x-1">
             <Bot className="w-3.5 h-3.5 text-indigo-600" />
-            <span>{agentMode === 'LIVE_MODEL' ? 'LIVE OPENAI MODEL' : 'FIXTURE SELECTOR — NOT A LIVE MODEL'}</span>
+            <span>{agentMode === 'LIVE_MODEL' ? 'LIVE MODEL (SARVAM-105B)' : 'FIXTURE SELECTOR — NOT A LIVE MODEL'}</span>
           </span>
         </div>
       </div>
@@ -976,6 +998,21 @@ export default function ShopPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      {activeIntent.provider_order_id && (runtimeKeyId || executionResult?.keyId) && (
+                        <button
+                          type="button"
+                          onClick={() => launchRazorpayCheckout(
+                            activeIntent.provider_order_id!,
+                            runtimeKeyId || executionResult?.keyId!,
+                            activeIntent
+                          )}
+                          disabled={loading}
+                          className="flex-1 py-2 px-3 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition flex items-center justify-center space-x-1 shadow"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          <span>Re-open Razorpay Checkout</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={handleRefreshStatus}

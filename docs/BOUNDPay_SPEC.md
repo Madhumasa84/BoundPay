@@ -32,12 +32,11 @@ BoundPay decouples shopping proposal intelligence from financial authorization. 
 
 ### 1.3 Phase 2 Implemented Scope (Added)
 - **Live AI Shopping Agent Integration**:
-  - Official OpenAI SDK integration (`openai@^4.0.0` or `openai@^7.0.0`).
-  - Configurable model (defaults to `gpt-4o-mini`).
-  - Strict JSON output schema (`product_id`, `quantity`, `reason`, or structured `suitable: false`).
-  - Catalog descriptions explicitly marked as untrusted text to defend against prompt injection.
+  - Narrow `ShoppingModelProvider` abstraction with Sarvam AI primary provider (`sarvam-105b` via `/v1/chat/completions` with `api-subscription-key` authentication) and optional OpenAI provider (`gpt-4o-mini`).
+  - Strict JSON Schema structured output (`selected`, `product_id`, `quantity`, `reason`).
+  - Catalog descriptions explicitly marked as untrusted merchant text to defend against prompt injection.
   - Model outputs cannot grant approval, alter policy, or determine prices.
-  - Dual-mode operation: `AGENT_MODE=fixture` (deterministic local keywords) and `AGENT_MODE=live` (OpenAI API).
+  - Dual-mode operation: `AGENT_MODE=fixture` (deterministic local keywords) and `AGENT_MODE=live` (live model API). Never silently falls back from live to fixture.
 - **Razorpay TEST Payment Gateway Integration**:
   - Strict safety guard: Hard rejection of live keys (`rzp_live_...`).
   - Orders API: Creates server-side Razorpay test order with integer paise, currency `INR`, stable `receipt`, and `notes: { intent_id }`.
@@ -139,11 +138,13 @@ stateDiagram-v2
 | :--- | :--- | :--- | :--- |
 | **Domain Logic** | Money, Catalog, Policy, State Machine | 38 | Passed |
 | **Storage & Invariants** | SQLite Schema, Immediate Tx, Concurrency | 12 | Passed |
+| **Cross-Connection Concurrency** | worker_threads, SharedArrayBuffer barriers, 5 scenarios × 5 rounds | 5 | Passed |
 | **Authentication** | Passwords, Sessions, Rate Limiting, HTTP Guards | 27 | Passed |
-| **AI Shopping Agent** | Schema, Sanitize, Prompt Injection, Errors | 17 | Passed |
+| **AI Shopping Agent** | Schema, Sanitize, Prompt Injection, Legacy Client | 17 | Passed |
+| **Sarvam AI Provider** | 25 Boundary Requirements, Schema, Auth, Retries, Errors | 25 | Passed |
 | **Razorpay Adapter** | Contract, Order Payload, Error Mapping | 12 | Passed |
 | **Signatures** | Checkout HMAC, Webhook HMAC, Whitespace | 10 | Passed |
 | **Checkout & Webhooks** | Callback, Webhook dedup, Status refresh, Recovery | 6 | Passed |
 | **Security & Auth** | HTTP guards, Cross-owner, Forgery defense | 7 | Passed |
 | **Playwright E2E** | 10 Full-browser Operator & Agent Workflows | 10 | Passed |
-| **Total Automated Tests** | **All 13 Suites** | **139** | **100% Passed** |
+| **Total Automated Tests** | **All 17 Suites** | **268** | **100% Passed** |

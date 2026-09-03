@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "NOT_RUN_NO_OPENAI_CREDENTIALS",
+  "status": "EVALUATED_LIVE_SARVAM_105B",
   "warning": "These are live-model inputs, not forced-compromise fixtures. No outcome is claimed until recorded in live-model-results.json.",
   "prompt_version": "phase2-untrusted-catalog-v1",
   "cases": [

@@ -44,4 +44,4 @@ An order records provider acceptance of checkout parameters; it is not proof of 
 
 The first execution claim owns the only reservation. A repeated request returns the existing intent/order. Definite provider rejection releases the reservation. Timeouts, thrown adapter exceptions, response loss, and stale `EXECUTING` recovery become `UNKNOWN` while retaining the reservation. Operators reconcile by persisted order ID/status or stable receipt; the application does not blindly create another order.
 
-SQLite deployment assumes a single Node.js application instance and persistent storage. This design does not claim multi-instance coordination, power-loss testing, or corruption recovery.
+SQLite deployment assumes a single Node.js application instance and persistent storage. Cross-connection write-lock contention within a single Node.js process (via worker_threads sharing one SQLite file) is tested with SharedArrayBuffer barriers. This design does not claim multi-OS-process coordination, power-loss testing, or corruption recovery.
