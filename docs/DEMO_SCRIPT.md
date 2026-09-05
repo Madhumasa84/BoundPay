@@ -27,6 +27,12 @@ Create a fresh keyboard quote at `279900` paise and approve the exact digest. Cl
 
 First replay the identical checkout on a confirmed demo intent and show the same intent/order plus one budget commitment. In a separate MOCK-labeled run, use Scenario 4. Execute the response-loss fault, show `UNKNOWN`, retained reservation, and the reconciliation action—never a blind retry. Show JSON audit export. Present deterministic evidence as 100/100 cases and 182 requests, not as a security percentage. Mention the 12-case rollback defect found and fixed. Keep live-model and real-provider counts separate.
 
-## 4:10–5:00 — architecture, limitations, next step
+## 4:10–4:45 — Authority Passport and receipt proof
+
+Open **Passports** and show the seeded OfficeBot mandate: INR, `demo_store`, electronics/books, ₹4,000 per transaction, ₹15,000 cumulative, approval above ₹3,000, ten usages, explicit expiry, and `EdDSA / kid`. Issue a second passport if desired, select it in Shop, and submit a low-value book or mouse request. Walk the Visual Authorization Debugger from signature and owner/agent binding through catalog, intersection, budget, approval, version, and execution checks. Revoke the passport before execution to show durable denial; explain that a revoked authority requires a new signed decision.
+
+Verify the signed authorization decision receipt, download the sanitized proof bundle, and state: “This proof verifies BoundPay’s signature and payload integrity. It is not a Razorpay payment receipt and does not independently prove database completeness, host integrity, or bank settlement.” Reload to show the passport and receipt remain persisted.
+
+## 4:45–5:00 — architecture, limitations, next step
 
 Show the architecture diagram: proposal → policy → exact approval → atomic reservation → provider order → verified capture. State the single-instance/persistent-SQLite assumption, application-audit limitation, subjective allowed-choice risk, and no power-loss claim. Next practical step: strengthen operational deployment and collect repeatable real TEST/live-model evidence before submission.

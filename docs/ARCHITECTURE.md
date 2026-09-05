@@ -8,7 +8,10 @@ untrusted browser / catalog text / model
              │                         │
              │                     blocked: no provider call
              ▼
- SQLite BEGIN IMMEDIATE: revalidate versions + reserve daily budget
+ passport signature + effective-policy intersection
+             │ signed decision receipt (proof, not capability)
+             ▼
+ SQLite BEGIN IMMEDIATE: revalidate versions + reserve daily budget + passport usage
              │ committed reservation
              ▼
  payment adapter boundary ── MOCK or Razorpay TEST order
@@ -28,6 +31,16 @@ The model, catalog descriptions, browser payloads, Checkout callback fields, and
 
 The proposal contains a catalog product ID, quantity, and rationale. The server replaces all financial attributes with catalog truth, computes integer-paise total, and evaluates every policy rule. A proposal cannot carry a price or approval flag into authority.
 
+## Authority Passport boundary
+
+An Authority Passport is an immutable version-1 payload signed as an EdDSA compact JWS. It is bound to the authenticated operator (`ownerId`/`operatorId`) and an explicit agent ID, and carries non-empty allowlists, integer-paise limits, cumulative budget, usage count, validity window, issuance policy version, revocation nonce, issuer, audience, and `kid`. The server stores the exact payload, SHA-256 payload digest, and compact JWS. Only status (`ACTIVE`, `REVOKED`, or derived/persisted `EXPIRED`) and revocation metadata change; revoked rows remain for auditability.
+
+At proposal time and again inside the `BEGIN IMMEDIATE` execution claim, the effective authorization is the intersection of current server policy, signed passport, trusted catalog, existing commitments, and approval state. A stricter current policy always wins. A passport never creates an order or confirms a payment. The execution service revalidates the stored intent, digest, passport signature/binding, quote, product/policy versions, approval, and budgets before dispatching a provider request.
+
+The passport usage table has one unique `(passport_id, intent_id)` row. `RESERVED`, `COMMITTED`, `CONFIRMED`, and `UNKNOWN` consume cumulative budget and usage allowance; only a definite provider rejection becomes `RELEASED`. Adapter namespaces remain isolated (`MOCK` versus `RAZORPAY_TEST`) while preserving one usage row per namespace-bound intent.
+
+Every deterministic authorization result (`ALLOWED`, `NEEDS_APPROVAL`, `BLOCKED`, `EXPIRED`, `REVOKED`) receives an immutable signed decision receipt. The receipt records trusted product/merchant/category/price, request and passport digests, policy version, stable reason codes, observed and explicitly projected passport budget, and approval requirement. A receipt is evidence of an authority statement, never an execution credential or a Razorpay payment receipt.
+
 ## Exact approval binding
 
 Approval stores the SHA-256 digest of canonical owner, idempotency key, product, quantity, trusted unit/total price, category, merchant, subscription flag, policy/product versions, purchase budget, and quote expiry. Execution checks the approval digest and current versions. Price or policy edits durably transition an unexecuted authorization to `EXPIRED` and require a new proposal and approval.
@@ -44,4 +57,4 @@ An order records provider acceptance of checkout parameters; it is not proof of 
 
 The first execution claim owns the only reservation. A repeated request returns the existing intent/order. Definite provider rejection releases the reservation. Timeouts, thrown adapter exceptions, response loss, and stale `EXECUTING` recovery become `UNKNOWN` while retaining the reservation. Operators reconcile by persisted order ID/status or stable receipt; the application does not blindly create another order.
 
-SQLite deployment assumes a single Node.js application instance and persistent storage. Cross-connection write-lock contention within a single Node.js process (via worker_threads sharing one SQLite file) is tested with SharedArrayBuffer barriers. This design does not claim multi-OS-process coordination, power-loss testing, or corruption recovery.
+SQLite deployment assumes a single Node.js application instance and persistent storage. Worker-thread contention using independent SQLite connections (via `worker_threads` sharing one SQLite file) is tested with SharedArrayBuffer barriers. This design does not claim multi-OS-process coordination, power-loss testing, or corruption recovery.

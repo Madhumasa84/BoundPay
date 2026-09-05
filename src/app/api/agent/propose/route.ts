@@ -15,6 +15,8 @@ export const dynamic = 'force-dynamic';
 
 const AgentProposeBodySchema = ShoppingAgentRequestSchema.extend({
   idempotency_key: z.string().min(1).max(128).optional(),
+  passport_id: z.string().min(1).max(128).optional(),
+  agent_id: z.string().min(1).max(128).optional(),
 });
 
 export async function POST(req: Request) {
@@ -24,6 +26,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const validated = AgentProposeBodySchema.parse(body);
+    if (!validated.passport_id || !validated.agent_id) {
+      return jsonResponse({ error: 'Validation Error', message: 'An explicit Authority Passport and agent binding are required' }, 400);
+    }
 
     const agentResult = await invokeShoppingAgent(
       validated.shopping_request,
@@ -57,6 +62,8 @@ export async function POST(req: Request) {
         model_name: agentResult.model_name,
         reason: agentResult.reason,
         fault_injection: 'NONE',
+        passport_id: validated.passport_id,
+        agent_id: validated.agent_id,
       },
       paymentAdapterMode
     );
@@ -69,6 +76,14 @@ export async function POST(req: Request) {
       model_provider: agentResult.model_provider,
       model_name: agentResult.model_name,
       reason: agentResult.reason,
+      passportEvaluation: proposal.passportEvaluation,
+      passport: {
+        passportId: proposal.passport.payload.passportId,
+        payloadDigest: proposal.passport.payloadDigest,
+        status: proposal.passport.status,
+        agentId: proposal.passport.payload.agentId,
+      },
+      decisionReceipt: proposal.decisionReceipt,
     }, 201);
   } catch (err: any) {
     if (err instanceof AgentConfigError) {

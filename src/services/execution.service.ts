@@ -1,14 +1,22 @@
 import crypto from 'crypto';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lte, inArray } from 'drizzle-orm';
 import { getDb, schema } from '../infrastructure/db';
 import { IntentStates, assertValidTransition } from '../domain/state-machine';
 import { PurchaseIntent } from '../domain/intent';
+import { computeCanonicalIntentHash } from '../domain/intent';
 import { PaymentAdapter, PaymentFaultType } from '../infrastructure/payment/adapter.interface';
 import { MockPaymentAdapter } from '../infrastructure/payment/mock-adapter';
 import { RazorpayTestAdapter } from '../infrastructure/payment/razorpay-test-adapter';
 import { Clock, defaultClock } from '../infrastructure/clock/clock';
 import { getKolkataDayRange } from './policy.service';
 import { appendAuditEvent } from './audit.service';
+import {
+  getPassportById,
+  issueLifecycleDecisionReceipt,
+  markPassportUsageStatus,
+} from './passport.service';
+import { PassportUsageStatus, statusForPassport } from '../domain/passport';
+import { verifyPassportSignatureSync } from '../infrastructure/authority/signing';
 
 export interface ExecutionResult {
   intent: PurchaseIntent;
@@ -97,6 +105,51 @@ export class ExecutionService {
         throw new StateConflictError(
           `Intent is in state '${intentRow.state}', cannot be claimed for execution (must be READY or APPROVED)`
         );
+      }
+
+      // Phase 4: revalidate the signed passport under the same SQLite write
+      // lock that claims the intent. Legacy Phase 3 rows without a passport are
+      // intentionally preserved so completed Razorpay evidence remains intact.
+      let passportRow: typeof schema.authorityPassports.$inferSelect | undefined;
+      let passportPayloadForUsage: any;
+      if (intentRow.passport_id) {
+        passportRow = db.select().from(schema.authorityPassports).where(eq(schema.authorityPassports.id, intentRow.passport_id)).get();
+        let passportPayload: any;
+        let passportFailure: { decision: 'REVOKED' | 'EXPIRED' | 'BLOCKED'; code: string; message: string } | null = null;
+        if (!passportRow) {
+          passportFailure = { decision: 'BLOCKED', code: 'PASSPORT_NOT_FOUND', message: 'Authority passport no longer exists; execution blocked' };
+        } else if (!['ACTIVE', 'REVOKED', 'EXPIRED'].includes(passportRow.status)) {
+          passportFailure = { decision: 'BLOCKED', code: 'PASSPORT_STATUS_INVALID', message: 'Authority passport lifecycle status is invalid; execution blocked' };
+        } else {
+          try {
+            // A deterministic fixture clock can intentionally lag the wall
+            // clock used when the seeded demo passport was issued.  Keep the
+            // cryptographic freshness check anchored at the later trusted
+            // evaluation/wall-clock instant; validFrom/expiresAt below remain
+            // bound to the execution clock.
+            passportPayload = verifyPassportSignatureSync(passportRow.signed_token, Math.max(Date.parse(nowIso), Date.now()));
+            passportPayloadForUsage = passportPayload;
+            const digest = crypto.createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(passportPayload).sort(([a], [b]) => a.localeCompare(b))))).digest('hex');
+            if (passportPayload.passportId !== intentRow.passport_id || digest !== intentRow.passport_payload_digest || passportPayload.revocationNonce !== passportRow.revocation_nonce || passportPayload.operatorId !== operatorId || passportPayload.ownerId !== operatorId || passportPayload.agentId !== intentRow.agent_id || passportPayload.paymentAdapterMode !== intentRow.payment_adapter_mode) {
+              passportFailure = { decision: 'BLOCKED', code: 'PASSPORT_BINDING_MISMATCH', message: 'Signed passport binding or immutable payload digest mismatch; execution blocked' };
+            } else {
+              const status = statusForPassport({ status: passportRow.status as any, revokedAt: passportRow.revoked_at, expiresAt: passportPayload.expiresAt }, nowIso);
+              if (status === 'REVOKED') passportFailure = { decision: 'REVOKED', code: 'PASSPORT_REVOKED', message: 'Authority passport was revoked before execution' };
+              else if (status !== 'ACTIVE' || nowIso < passportPayload.validFrom) {
+                if (status === 'EXPIRED' && passportRow.status === 'ACTIVE') db.update(schema.authorityPassports).set({ status: 'EXPIRED' }).where(eq(schema.authorityPassports.id, passportRow.id)).run();
+                passportFailure = { decision: 'EXPIRED', code: nowIso < passportPayload.validFrom ? 'PASSPORT_NOT_YET_VALID' : 'PASSPORT_EXPIRED', message: 'Authority passport is expired or not yet valid' };
+              }
+            }
+          } catch {
+            passportFailure = { decision: 'BLOCKED', code: 'PASSPORT_SIGNATURE_INVALID', message: 'Authority passport signature verification failed; execution blocked' };
+          }
+        }
+        if (passportFailure) {
+          const terminalState = passportFailure.decision === 'EXPIRED' ? IntentStates.EXPIRED : IntentStates.BLOCKED;
+          db.update(schema.purchaseIntents).set({ state: terminalState, failure_reason: passportFailure.message, updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+          appendAuditEvent({ eventType: passportFailure.decision === 'REVOKED' ? 'PASSPORT_REVOKED_EXECUTION_BLOCKED' : 'PASSPORT_REVALIDATION_FAILED', intentId, operatorId, amountPaise: intentRow.total_amount_paise, stateBefore: intentRow.state, stateAfter: terminalState, payload: { reasonCode: passportFailure.code, passportId: intentRow.passport_id }, clock: this.clock });
+          return { revalidationError: new QuoteRevalidationError(passportFailure.message), passportDecision: passportFailure.decision, passportReasonCode: passportFailure.code };
+        }
       }
 
       // 2. Revalidate Quote Expiry
@@ -193,6 +246,29 @@ export class ExecutionService {
         };
       }
 
+      const recomputedIntentHash = computeCanonicalIntentHash({
+        category: intentRow.category,
+        currency: 'INR',
+        idempotency_key: intentRow.idempotency_key,
+        is_subscription: Boolean(intentRow.is_subscription),
+        merchant_id: intentRow.merchant_id,
+        owner_id: intentRow.owner_id,
+        policy_version: intentRow.policy_version,
+        product_id: intentRow.product_id,
+        product_version: intentRow.product_version,
+        purchase_budget_paise: intentRow.purchase_budget_paise,
+        quantity: intentRow.quantity,
+        quote_expiry: intentRow.quote_expiry,
+        total_amount_paise: intentRow.total_amount_paise,
+        unit_price_paise: intentRow.unit_price_paise,
+        ...(intentRow.passport_id ? { passport_id: intentRow.passport_id, passport_payload_digest: intentRow.passport_payload_digest || '', agent_id: intentRow.agent_id || '', payment_adapter_mode: intentRow.payment_adapter_mode as 'MOCK' | 'RAZORPAY_TEST' } : {}),
+      });
+      if (recomputedIntentHash !== intentRow.canonical_request_hash) {
+        db.update(schema.purchaseIntents).set({ state: IntentStates.EXPIRED, failure_reason: 'Canonical intent digest changed; execution blocked', updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+        appendAuditEvent({ eventType: 'CANONICAL_INTENT_DIGEST_MISMATCH', intentId, operatorId, amountPaise: intentRow.total_amount_paise, stateBefore: intentRow.state, stateAfter: IntentStates.EXPIRED, payload: { expected: intentRow.canonical_request_hash, recomputed: recomputedIntentHash }, clock: this.clock });
+        return { revalidationError: new QuoteRevalidationError('Canonical intent digest changed; new proposal and authorization required'), passportDecision: 'BLOCKED', passportReasonCode: 'CANONICAL_INTENT_DIGEST_MISMATCH' };
+      }
+
       // 5. Revalidate Approval Binding if state was APPROVED
       if (intentRow.state === IntentStates.APPROVED) {
         const approval = db
@@ -250,6 +326,30 @@ export class ExecutionService {
         );
       }
 
+      // Passport cumulative budget and usage allowance share this exact
+      // transaction. RESERVED/COMMITTED/CONFIRMED/UNKNOWN all consume both
+      // limits; only a definite provider rejection can release a usage row.
+      if (passportRow && passportPayloadForUsage) {
+        const passportUsageRows = db.select().from(schema.passportUsages).where(and(
+          eq(schema.passportUsages.passport_id, intentRow.passport_id!),
+          eq(schema.passportUsages.payment_adapter_mode, intentRow.payment_adapter_mode),
+          inArray(schema.passportUsages.usage_status, ['RESERVED', 'COMMITTED', 'CONFIRMED', 'UNKNOWN'])
+        )).all();
+        const passportCommittedPaise = passportUsageRows.reduce((sum, row) => sum + row.amount_paise, 0);
+        if (passportCommittedPaise + intentRow.total_amount_paise > passportPayloadForUsage.cumulativeBudgetPaise) {
+          const message = 'Execution exceeds authority passport cumulative budget; no provider call made';
+          db.update(schema.purchaseIntents).set({ state: IntentStates.BLOCKED, failure_reason: message, updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+          appendAuditEvent({ eventType: 'PASSPORT_BUDGET_BLOCKED', intentId, operatorId, amountPaise: intentRow.total_amount_paise, stateBefore: intentRow.state, stateAfter: IntentStates.BLOCKED, payload: { passportId: intentRow.passport_id, committedPaise: passportCommittedPaise, cumulativeBudgetPaise: passportPayloadForUsage.cumulativeBudgetPaise }, clock: this.clock });
+          return { revalidationError: new BudgetExceededError(message), passportDecision: 'BLOCKED', passportReasonCode: 'PASSPORT_CUMULATIVE_BUDGET_EXCEEDED' };
+        }
+        if (passportUsageRows.length >= passportPayloadForUsage.maximumUsageCount) {
+          const message = 'Execution exceeds authority passport usage count; no provider call made';
+          db.update(schema.purchaseIntents).set({ state: IntentStates.BLOCKED, failure_reason: message, updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+          appendAuditEvent({ eventType: 'PASSPORT_USAGE_BLOCKED', intentId, operatorId, amountPaise: intentRow.total_amount_paise, stateBefore: intentRow.state, stateAfter: IntentStates.BLOCKED, payload: { passportId: intentRow.passport_id, usedCount: passportUsageRows.length, maximumUsageCount: passportPayloadForUsage.maximumUsageCount }, clock: this.clock });
+          return { revalidationError: new BudgetExceededError(message), passportDecision: 'BLOCKED', passportReasonCode: 'PASSPORT_USAGE_EXHAUSTED' };
+        }
+      }
+
       // 7. Atomic Write: Create Spend Ledger Reservation and Transition Intent to EXECUTING
       assertValidTransition(intentRow.state, IntentStates.EXECUTING);
 
@@ -266,6 +366,20 @@ export class ExecutionService {
         provider_order_id: null,
         provider_payment_id: null,
       }).run();
+
+      if (passportRow && passportPayloadForUsage) {
+        db.insert(schema.passportUsages).values({
+          id: crypto.randomUUID(),
+          passport_id: intentRow.passport_id!,
+          intent_id: intentId,
+          amount_paise: intentRow.total_amount_paise,
+          payment_adapter_mode: intentRow.payment_adapter_mode,
+          usage_status: PassportUsageStatus.RESERVED,
+          reservation_timestamp: nowIso,
+          released_or_committed_timestamp: null,
+          created_at: nowIso,
+        }).run();
+      }
 
       db.update(schema.purchaseIntents)
         .set({
@@ -306,6 +420,12 @@ export class ExecutionService {
     if ('revalidationError' in result) {
       // Throw only after the transaction committed the durable EXPIRED state and
       // its audit evidence. Throwing inside the callback would roll both back.
+      if ('passportDecision' in result && result.passportDecision) {
+        const durableIntent = db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get() as PurchaseIntent | undefined;
+        try {
+          if (durableIntent) issueLifecycleDecisionReceipt(durableIntent, result.passportDecision === 'REVOKED' ? 'REVOKED' : result.passportDecision === 'EXPIRED' ? 'EXPIRED' : 'BLOCKED', result.passportReasonCode || 'PASSPORT_REVALIDATION_FAILED', result.revalidationError.message, this.clock);
+        } catch {}
+      }
       throw result.revalidationError;
     }
     return result;
@@ -323,12 +443,19 @@ export class ExecutionService {
     operatorId: string,
     faultInjection: PaymentFaultType = 'NONE'
   ): Promise<ExecutionResult> {
-    const { db } = getDb();
+    const { db, sqlite } = getDb();
 
     // Check if intent is already confirmed (repeated checkout attempt idempotency)
     const existing = db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get();
     if (!existing) {
       throw new StateConflictError(`Purchase intent '${intentId}' not found`);
+    }
+
+    // Ownership must be checked before every idempotent early return. Otherwise
+    // a caller who learns an intent ID could retrieve another operator's
+    // provider identifiers after confirmation/order creation.
+    if (existing.owner_id !== operatorId) {
+      throw new StateConflictError('Unauthorized: operator does not own this intent');
     }
 
     if (existing.state === IntentStates.PAYMENT_CONFIRMED) {
@@ -369,6 +496,35 @@ export class ExecutionService {
     const { intent, ledgerId } = this.claimAndReserveAtomic(intentId, operatorId);
     const adapter = this.getAdapterForMode(intent.payment_adapter_mode);
 
+    // Close the small hand-off window between the atomic claim and the
+    // external provider call. Revocation/expiry observed here is durable and
+    // releases only the not-yet-dispatched reservations.
+    if (intent.passport_id) {
+      const currentPassport = getPassportById(intent.passport_id, operatorId, this.clock.nowIso());
+      let dispatchBlocked: 'REVOKED' | 'EXPIRED' | 'BLOCKED' | null = null;
+      if (!currentPassport) dispatchBlocked = 'BLOCKED';
+      else {
+        try {
+          verifyPassportSignatureSync(currentPassport.signedToken, Math.max(Date.parse(this.clock.nowIso()), Date.now()));
+          const status = statusForPassport({ status: currentPassport.status, revokedAt: currentPassport.revokedAt, expiresAt: currentPassport.payload.expiresAt }, this.clock.nowIso());
+          if (status === 'REVOKED') dispatchBlocked = 'REVOKED';
+          else if (status !== 'ACTIVE' || this.clock.nowIso() < currentPassport.payload.validFrom) dispatchBlocked = 'EXPIRED';
+        } catch { dispatchBlocked = 'BLOCKED'; }
+      }
+      if (dispatchBlocked) {
+        const nowIso = this.clock.nowIso();
+        const terminalState = dispatchBlocked === 'EXPIRED' ? IntentStates.EXPIRED : IntentStates.BLOCKED;
+        sqlite.transaction(() => {
+          db.update(schema.purchaseIntents).set({ state: terminalState, failure_reason: 'Authority passport changed before provider dispatch', updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+          db.update(schema.spendLedger).set({ status: 'RELEASED' }).where(eq(schema.spendLedger.id, ledgerId)).run();
+          markPassportUsageStatus(intent.passport_id!, intent.id, PassportUsageStatus.RELEASED, nowIso);
+          appendAuditEvent({ eventType: 'PASSPORT_DISPATCH_BLOCKED', intentId: intent.id, operatorId, amountPaise: intent.total_amount_paise, stateBefore: IntentStates.EXECUTING, stateAfter: terminalState, payload: { decision: dispatchBlocked, providerCallMade: false }, clock: this.clock });
+          issueLifecycleDecisionReceipt({ ...intent, state: terminalState, updated_at: nowIso }, dispatchBlocked === 'REVOKED' ? 'REVOKED' : dispatchBlocked === 'EXPIRED' ? 'EXPIRED' : 'BLOCKED', 'PASSPORT_CHANGED_BEFORE_DISPATCH', 'Authority passport changed before provider dispatch; no provider call was made', this.clock);
+        }).immediate();
+        throw new QuoteRevalidationError('Authority passport changed before provider dispatch; no provider call was made');
+      }
+    }
+
     // Step 2: Call Payment Adapter outside database transaction
     try {
       const orderResult = await adapter.createOrder({
@@ -386,6 +542,7 @@ export class ExecutionService {
 
         if (orderResult.status === 'UNKNOWN') {
           // Ambiguous failure (e.g. timeout): transition to UNKNOWN, keep reservation durable!
+          sqlite.transaction(() => {
           db.update(schema.purchaseIntents)
             .set({
               state: IntentStates.UNKNOWN,
@@ -395,6 +552,8 @@ export class ExecutionService {
             .where(eq(schema.purchaseIntents.id, intentId))
             .run();
 
+          if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.UNKNOWN, nowIso);
+
           appendAuditEvent({
             eventType: 'ORDER_UNKNOWN',
             intentId,
@@ -402,9 +561,10 @@ export class ExecutionService {
             amountPaise: intent.total_amount_paise,
             stateBefore: IntentStates.EXECUTING,
             stateAfter: IntentStates.UNKNOWN,
-            payload: { error: orderResult.errorMessage, rawResponse: orderResult.rawResponse },
+            payload: { error: orderResult.errorMessage, providerCallMade: true, providerStatus: orderResult.status },
             clock: this.clock,
           });
+          }).immediate();
 
           return {
             intent: { ...intent, state: IntentStates.UNKNOWN, updated_at: nowIso },
@@ -417,6 +577,7 @@ export class ExecutionService {
         }
 
         // Definite rejection: mark intent BLOCKED, release reservation
+        sqlite.transaction(() => {
         db.update(schema.purchaseIntents)
           .set({
             state: IntentStates.BLOCKED,
@@ -431,6 +592,8 @@ export class ExecutionService {
           .where(eq(schema.spendLedger.id, ledgerId))
           .run();
 
+        if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.RELEASED, nowIso);
+
         appendAuditEvent({
           eventType: 'ORDER_REJECTED',
           intentId,
@@ -438,9 +601,10 @@ export class ExecutionService {
           amountPaise: intent.total_amount_paise,
           stateBefore: IntentStates.EXECUTING,
           stateAfter: IntentStates.BLOCKED,
-          payload: { error: orderResult.errorMessage, rawResponse: orderResult.rawResponse },
+          payload: { error: orderResult.errorMessage, providerCallMade: true, providerStatus: orderResult.status },
           clock: this.clock,
         });
+        }).immediate();
 
         return {
           intent: { ...intent, state: IntentStates.BLOCKED, updated_at: nowIso },
@@ -456,6 +620,7 @@ export class ExecutionService {
       const providerOrderId = orderResult.orderId;
       const orderCreatedTimeIso = this.clock.nowIso();
 
+      sqlite.transaction(() => {
       db.update(schema.purchaseIntents)
         .set({
           state: IntentStates.ORDER_CREATED,
@@ -470,6 +635,8 @@ export class ExecutionService {
         .where(eq(schema.spendLedger.id, ledgerId))
         .run();
 
+      if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.COMMITTED, orderCreatedTimeIso);
+
       appendAuditEvent({
         eventType: 'ORDER_CREATED',
         intentId,
@@ -477,9 +644,10 @@ export class ExecutionService {
         amountPaise: intent.total_amount_paise,
         stateBefore: IntentStates.EXECUTING,
         stateAfter: IntentStates.ORDER_CREATED,
-        payload: { providerOrderId, rawResponse: orderResult.rawResponse },
+        payload: { providerOrderId, providerCallMade: true, providerStatus: orderResult.status },
         clock: this.clock,
       });
+      }).immediate();
 
       // If Razorpay Test mode: stop here and let client complete standard checkout
       if (intent.payment_adapter_mode === 'RAZORPAY_TEST') {
@@ -539,6 +707,7 @@ export class ExecutionService {
         }
 
         // Timeout or indeterminate capture -> UNKNOWN, reservation preserved
+        sqlite.transaction(() => {
         db.update(schema.purchaseIntents)
           .set({
             state: IntentStates.UNKNOWN,
@@ -547,6 +716,8 @@ export class ExecutionService {
           })
           .where(eq(schema.purchaseIntents.id, intentId))
           .run();
+
+        if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.UNKNOWN, confirmTimeIso);
 
         appendAuditEvent({
           eventType: 'PAYMENT_UNKNOWN',
@@ -558,6 +729,7 @@ export class ExecutionService {
           payload: { providerOrderId, error: captureResult.errorMessage },
           clock: this.clock,
         });
+        }).immediate();
 
         return {
           intent: { ...intent, state: IntentStates.UNKNOWN, updated_at: confirmTimeIso },
@@ -573,6 +745,7 @@ export class ExecutionService {
       // Convert Reservation to Confirmed Spend exactly once
       const providerPaymentId = captureResult.paymentId || `mock_pay_${crypto.randomBytes(8).toString('hex')}`;
 
+      sqlite.transaction(() => {
       db.update(schema.spendLedger)
         .set({
           status: 'CONFIRMED',
@@ -591,6 +764,8 @@ export class ExecutionService {
         .where(eq(schema.purchaseIntents.id, intentId))
         .run();
 
+      if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.CONFIRMED, confirmTimeIso);
+
       appendAuditEvent({
         eventType: 'PAYMENT_CONFIRMED',
         intentId,
@@ -598,9 +773,10 @@ export class ExecutionService {
         amountPaise: intent.total_amount_paise,
         stateBefore: IntentStates.ORDER_CREATED,
         stateAfter: IntentStates.PAYMENT_CONFIRMED,
-        payload: { providerOrderId, providerPaymentId, captureResult: captureResult.rawResponse },
+        payload: { providerOrderId, providerPaymentId, providerStatus: captureResult.status },
         clock: this.clock,
       });
+      }).immediate();
 
       return {
         intent: {
@@ -632,6 +808,7 @@ export class ExecutionService {
         .get();
 
       if (current?.state === IntentStates.EXECUTING || current?.state === IntentStates.ORDER_CREATED) {
+        sqlite.transaction(() => {
         db.update(schema.purchaseIntents)
           .set({
             state: IntentStates.UNKNOWN,
@@ -640,6 +817,8 @@ export class ExecutionService {
           })
           .where(eq(schema.purchaseIntents.id, intentId))
           .run();
+
+        if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.UNKNOWN, unknownAt);
 
         appendAuditEvent({
           eventType: 'PAYMENT_ADAPTER_EXCEPTION',
@@ -651,6 +830,7 @@ export class ExecutionService {
           payload: { error: message, reservationRetained: true },
           clock: this.clock,
         });
+        }).immediate();
       }
 
       return {
@@ -667,6 +847,54 @@ export class ExecutionService {
         message: `Execution outcome unknown after adapter error: ${message}. Reservation retained; reconcile before retrying.`,
       };
     }
+  }
+
+  /**
+   * Linearization point for provider-confirmed payment state. Callback,
+   * refresh, and webhook paths all re-read the intent while holding the same
+   * SQLite write transaction, so only the first valid serial ordering appends
+   * confirmation evidence.
+   */
+  private finalizeCapturedPaymentAtomic(
+    intentId: string,
+    orderId: string,
+    paymentId: string,
+    verifiedVia: 'MOCK_CAPTURE' | 'CHECKOUT_CALLBACK' | 'STATUS_REFRESH' | 'WEBHOOK',
+    additionalWrite?: () => void
+  ): { intent: PurchaseIntent; newlyConfirmed: boolean } {
+    const { db, sqlite } = getDb();
+    return sqlite.transaction(() => {
+      const current = db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get();
+      if (!current) throw new StateConflictError('Purchase intent not found during payment finalization');
+      if (current.state === IntentStates.PAYMENT_CONFIRMED) {
+        additionalWrite?.();
+        return { intent: current as PurchaseIntent, newlyConfirmed: false };
+      }
+      const nowIso = this.clock.nowIso();
+      const ledger = db.select().from(schema.spendLedger).where(eq(schema.spendLedger.intent_id, intentId)).get();
+      if (!ledger) throw new StateConflictError('Spend reservation missing during payment finalization');
+      db.update(schema.spendLedger).set({
+        status: 'CONFIRMED', confirmation_timestamp: nowIso,
+        provider_order_id: orderId, provider_payment_id: paymentId,
+      }).where(eq(schema.spendLedger.id, ledger.id)).run();
+      if (current.passport_id) markPassportUsageStatus(current.passport_id, current.id, PassportUsageStatus.CONFIRMED, nowIso);
+      db.update(schema.purchaseIntents).set({
+        state: IntentStates.PAYMENT_CONFIRMED, provider_order_id: orderId,
+        provider_payment_id: paymentId, updated_at: nowIso,
+      }).where(eq(schema.purchaseIntents.id, intentId)).run();
+      additionalWrite?.();
+      appendAuditEvent({
+        eventType: 'PAYMENT_CONFIRMED', intentId, operatorId: current.owner_id,
+        amountPaise: current.total_amount_paise, stateBefore: current.state,
+        stateAfter: IntentStates.PAYMENT_CONFIRMED,
+        payload: { providerOrderId: orderId, providerPaymentId: paymentId, verifiedVia },
+        clock: this.clock,
+      });
+      return {
+        intent: { ...current, state: IntentStates.PAYMENT_CONFIRMED, provider_order_id: orderId, provider_payment_id: paymentId, updated_at: nowIso } as PurchaseIntent,
+        newlyConfirmed: true,
+      };
+    }).immediate();
   }
 
   /**
@@ -760,54 +988,10 @@ export class ExecutionService {
       };
     }
 
-    // Verified & Captured! Finalize confirmation atomically in SQLite
-    const ledger = db
-      .select()
-      .from(schema.spendLedger)
-      .where(eq(schema.spendLedger.intent_id, intentId))
-      .get();
-
-    if (ledger) {
-      db.update(schema.spendLedger)
-        .set({
-          status: 'CONFIRMED',
-          confirmation_timestamp: nowIso,
-          provider_order_id: params.orderId,
-          provider_payment_id: params.paymentId,
-        })
-        .where(eq(schema.spendLedger.id, ledger.id))
-        .run();
-    }
-
-    db.update(schema.purchaseIntents)
-      .set({
-        state: IntentStates.PAYMENT_CONFIRMED,
-        provider_order_id: params.orderId,
-        provider_payment_id: params.paymentId,
-        updated_at: nowIso,
-      })
-      .where(eq(schema.purchaseIntents.id, intentId))
-      .run();
-
-    appendAuditEvent({
-      eventType: 'PAYMENT_CONFIRMED',
-      intentId,
-      operatorId,
-      amountPaise: intent.total_amount_paise,
-      stateBefore: intent.state,
-      stateAfter: IntentStates.PAYMENT_CONFIRMED,
-      payload: {
-        providerOrderId: params.orderId,
-        providerPaymentId: params.paymentId,
-        verifiedVia: 'CHECKOUT_CALLBACK',
-      },
-      clock: this.clock,
-    });
-
-    const updated = db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get()!;
+    const finalized = this.finalizeCapturedPaymentAtomic(intentId, params.orderId, params.paymentId, 'CHECKOUT_CALLBACK');
 
     return {
-      intent: updated as PurchaseIntent,
+      intent: finalized.intent,
       providerOrderId: params.orderId,
       providerPaymentId: params.paymentId,
       isMock: captureResult.isMock,
@@ -862,51 +1046,10 @@ export class ExecutionService {
     if (statusResult.status === 'CAPTURED') {
       const paymentId = statusResult.paymentId || `prov_pay_${Date.now()}`;
 
-      const ledger = db
-        .select()
-        .from(schema.spendLedger)
-        .where(eq(schema.spendLedger.intent_id, intentId))
-        .get();
-
-      if (ledger) {
-        db.update(schema.spendLedger)
-          .set({
-            status: 'CONFIRMED',
-            confirmation_timestamp: nowIso,
-            provider_payment_id: paymentId,
-          })
-          .where(eq(schema.spendLedger.id, ledger.id))
-          .run();
-      }
-
-      db.update(schema.purchaseIntents)
-        .set({
-          state: IntentStates.PAYMENT_CONFIRMED,
-          provider_payment_id: paymentId,
-          updated_at: nowIso,
-        })
-        .where(eq(schema.purchaseIntents.id, intentId))
-        .run();
-
-      appendAuditEvent({
-        eventType: 'PAYMENT_CONFIRMED',
-        intentId,
-        operatorId,
-        amountPaise: intent.total_amount_paise,
-        stateBefore: intent.state,
-        stateAfter: IntentStates.PAYMENT_CONFIRMED,
-        payload: {
-          providerOrderId: intent.provider_order_id,
-          providerPaymentId: paymentId,
-          verifiedVia: 'STATUS_REFRESH',
-        },
-        clock: this.clock,
-      });
-
-      const updated = db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get()!;
+      const finalized = this.finalizeCapturedPaymentAtomic(intentId, intent.provider_order_id, paymentId, 'STATUS_REFRESH');
 
       return {
-        intent: updated as PurchaseIntent,
+        intent: finalized.intent,
         providerOrderId: intent.provider_order_id,
         providerPaymentId: paymentId,
         isMock: statusResult.isMock,
@@ -1035,6 +1178,8 @@ export class ExecutionService {
               .where(eq(schema.spendLedger.id, ledger.id))
               .run();
           }
+
+          if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.CONFIRMED, nowIso);
 
           db.update(schema.purchaseIntents)
             .set({
@@ -1199,61 +1344,22 @@ export class ExecutionService {
         return { status: 'ALREADY_CONFIRMED', processed: true };
       }
 
-      // Confirm payment from webhook
-      const ledger = db
-        .select()
-        .from(schema.spendLedger)
-        .where(eq(schema.spendLedger.intent_id, intent.id))
-        .get();
-
-      if (ledger) {
-        db.update(schema.spendLedger)
-          .set({
-            status: 'CONFIRMED',
-            confirmation_timestamp: nowIso,
-            provider_payment_id: paymentId,
-          })
-          .where(eq(schema.spendLedger.id, ledger.id))
-          .run();
-      }
-
-      db.update(schema.purchaseIntents)
-        .set({
-          state: IntentStates.PAYMENT_CONFIRMED,
-          provider_payment_id: paymentId,
-          updated_at: nowIso,
-        })
-        .where(eq(schema.purchaseIntents.id, intent.id))
-        .run();
-
-      db.insert(schema.webhookEvents).values({
-        id: webhookRecordId,
-        provider: 'RAZORPAY',
-        event_id: eventId,
-        event_type: eventType,
-        intent_id: intent.id,
-        order_id: orderId,
-        payment_id: paymentId,
-        payload_json: rawBody,
-        status: 'PROCESSED',
-        received_at: nowIso,
-        processed_at: nowIso,
-      }).run();
-
-      appendAuditEvent({
-        eventType: 'PAYMENT_CONFIRMED',
-        intentId: intent.id,
-        operatorId: intent.owner_id,
-        amountPaise: intent.total_amount_paise,
-        stateBefore: intent.state,
-        stateAfter: IntentStates.PAYMENT_CONFIRMED,
-        payload: {
-          providerOrderId: orderId,
-          providerPaymentId: paymentId,
-          verifiedVia: 'WEBHOOK',
-          eventId,
-        },
-        clock: this.clock,
+      // Webhook evidence and all financial state changes share one SQLite
+      // commit. Callback/status-refresh races are serialized by the finalizer.
+      this.finalizeCapturedPaymentAtomic(intent.id, orderId, paymentId || `pay_${Date.now()}`, 'WEBHOOK', () => {
+        db.insert(schema.webhookEvents).values({
+          id: webhookRecordId,
+          provider: 'RAZORPAY',
+          event_id: eventId,
+          event_type: eventType,
+          intent_id: intent.id,
+          order_id: orderId,
+          payment_id: paymentId,
+          payload_json: rawBody,
+          status: 'PROCESSED',
+          received_at: nowIso,
+          processed_at: nowIso,
+        }).run();
       });
 
       return { status: 'CONFIRMED_FROM_WEBHOOK', processed: true };

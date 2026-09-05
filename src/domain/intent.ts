@@ -6,9 +6,28 @@ import { IntentState, IntentStates } from './state-machine';
 export type SourceMode = 'MANUAL' | 'FIXTURE' | 'LIVE_MODEL' | 'AGENT_PROPOSAL';
 export type PaymentAdapterMode = 'MOCK' | 'RAZORPAY_TEST';
 
+export class PaymentModeConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PaymentModeConfigurationError';
+  }
+}
+
 export function resolvePaymentAdapterMode(): PaymentAdapterMode {
-  const envVal = (process.env.PAYMENT_ADAPTER_MODE || process.env.PAYMENT_MODE || '').trim().toUpperCase();
-  return envVal === 'RAZORPAY_TEST' ? 'RAZORPAY_TEST' : 'MOCK';
+  const configured = [
+    ['PAYMENT_ADAPTER_MODE', process.env.PAYMENT_ADAPTER_MODE],
+    ['PAYMENT_MODE', process.env.PAYMENT_MODE],
+  ].filter(([, value]) => Boolean(value?.trim())) as Array<[string, string]>;
+  const normalized = configured.map(([name, value]) => [name, value.trim().toUpperCase()] as const);
+  const values = new Set(normalized.map(([, value]) => value));
+  if (values.size > 1) {
+    throw new PaymentModeConfigurationError('Conflicting payment adapter mode variables are configured');
+  }
+  const envVal = normalized[0]?.[1] || 'MOCK';
+  if (envVal !== 'MOCK' && envVal !== 'RAZORPAY_TEST') {
+    throw new PaymentModeConfigurationError('Unsupported payment adapter mode; choose MOCK or RAZORPAY_TEST');
+  }
+  return envVal;
 }
 
 export interface CanonicalIntentPayload {
@@ -26,6 +45,11 @@ export interface CanonicalIntentPayload {
   quote_expiry: string;
   total_amount_paise: number;
   unit_price_paise: number;
+  /** Phase 4 fields are optional only for legacy Phase 3 rows/evidence. New intents always include them. */
+  passport_id?: string;
+  passport_payload_digest?: string;
+  agent_id?: string;
+  payment_adapter_mode?: PaymentAdapterMode;
 }
 
 export interface PurchaseIntent {
@@ -49,6 +73,9 @@ export interface PurchaseIntent {
   payment_adapter_mode: PaymentAdapterMode;
   model_provider?: string | null;
   model_name?: string | null;
+  passport_id?: string | null;
+  passport_payload_digest?: string | null;
+  agent_id?: string | null;
   receipt?: string | null;
   provider_order_id?: string | null;
   provider_payment_id?: string | null;
@@ -96,11 +123,13 @@ export function isApprovalValidForIntent(
 export const CreateProposalRequestSchema = z.object({
   product_id: z.string().min(1).max(64),
   quantity: z.number().int().min(1).max(10),
-  purchase_budget_paise: z.number().int().positive('Purchase budget must be a positive integer in paise'),
+  purchase_budget_paise: z.number().int().safe().positive('Purchase budget must be a positive integer in paise'),
   idempotency_key: z.string().min(1).max(128),
   source_mode: z.enum(['MANUAL', 'FIXTURE', 'LIVE_MODEL', 'AGENT_PROPOSAL']).default('MANUAL'),
   model_provider: z.string().optional(),
   model_name: z.string().optional(),
+  passport_id: z.string().min(1).max(128).optional(),
+  agent_id: z.string().min(1).max(128).optional(),
   reason: z.string().max(1024).optional().default(''),
   fault_injection: z.enum([
     'NONE',

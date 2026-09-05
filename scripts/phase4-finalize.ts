@@ -1,0 +1,55 @@
+import { createRequire } from 'module';
+import { eq } from 'drizzle-orm';
+import { getDb, closeDefaultDb, schema } from '../src/infrastructure/db';
+import { ExecutionService } from '../src/services/execution.service';
+import { RazorpayTestAdapter } from '../src/infrastructure/payment/razorpay-test-adapter';
+import { getAuthorityConfig, verifySignedTokenOffline } from '../src/infrastructure/authority/signing';
+import { getLatestDecisionReceipt } from '../src/services/passport.service';
+
+const req = createRequire(require.resolve('next/package.json'));
+req('@next/env').loadEnvConfig(process.cwd(), true, { info() {}, error() {} });
+process.env.DATABASE_PATH = '/home/masa84/razorpay/data/phase-4-razorpay-test-20260905T020301Z.sqlite';
+const intentId = 'bf5eba88-4efa-43e8-aa8b-c16b379e5853';
+const { db } = getDb();
+const out: Record<string, unknown> = { provider_status_lookup_calls: 0, replay_provider_calls: 0 };
+function fail(code: string): never { throw new Error(code); }
+async function main() {
+  let intent = db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get();
+  if (!intent || intent.state !== 'PAYMENT_CONFIRMED' || !intent.provider_order_id || !intent.provider_payment_id) fail('PAYMENT_NOT_CONFIRMED');
+  if (intent.total_amount_paise !== 279900 || intent.currency !== 'INR' || intent.payment_adapter_mode !== 'RAZORPAY_TEST') fail('STORED_PAYMENT_BINDING_INVALID');
+  const adapter = new RazorpayTestAdapter({ keyId: process.env.RAZORPAY_KEY_ID!, keySecret: process.env.RAZORPAY_KEY_SECRET! });
+  out.provider_status_lookup_calls = 1;
+  const provider = await adapter.getOrderStatus(intent.provider_order_id);
+  if (provider.status !== 'CAPTURED' || provider.orderId !== intent.provider_order_id || provider.paymentId !== intent.provider_payment_id || provider.amountPaise !== 279900 || provider.currency !== 'INR') fail('AUTHENTICATED_PROVIDER_LOOKUP_MISMATCH');
+  out.provider_lookup = { status: provider.status, order_id: provider.orderId, payment_id: provider.paymentId, amount_paise: provider.amountPaise, currency: provider.currency };
+  const config = getAuthorityConfig({ requirePrivate: true });
+  const receipt = getLatestDecisionReceipt(intentId, intent.owner_id);
+  if (!receipt) fail('RECEIPT_MISSING');
+  const verified = await verifySignedTokenOffline(receipt.signedToken, 'receipt', config.publicKeyPem, { issuer: config.issuer, audience: config.audience });
+  if (verified.intentId !== intentId) fail('OFFLINE_RECEIPT_BINDING_INVALID');
+  out.offline_receipt_verification = 'VALID';
+  const proofSafe = !JSON.stringify(verified).match(/RAZORPAY_KEY_SECRET|api-subscription-key|keySecret|privateKeyPem|signedToken/i);
+  if (!proofSafe) fail('PROOF_BUNDLE_SECRET_FIELD');
+  out.proof_bundle_excludes_secrets = true;
+  const auditRows = db.select().from(schema.auditEvents).all();
+  const auditSafe = auditRows.every((row) => !/rawResponse|keySecret|api-subscription-key|RAZORPAY_KEY_SECRET|SARVAM_API_KEY/i.test(row.payload_json));
+  if (!auditSafe) fail('AUDIT_SECRET_OR_RAW_PROVIDER_DATA');
+  out.audit_contains_no_raw_provider_or_secret_data = true;
+  const before = { orders: db.select().from(schema.purchaseIntents).all().filter((x) => Boolean(x.provider_order_id)).length, ledger: db.select().from(schema.spendLedger).all().length, usage: db.select().from(schema.passportUsages).all().length };
+  const replay = await new ExecutionService().executeIntent(intentId, intent.owner_id);
+  const after = { orders: db.select().from(schema.purchaseIntents).all().filter((x) => Boolean(x.provider_order_id)).length, ledger: db.select().from(schema.spendLedger).all().length, usage: db.select().from(schema.passportUsages).all().length };
+  if (!replay.success || replay.status !== 'PAYMENT_CONFIRMED' || replay.providerOrderId !== intent.provider_order_id || replay.providerPaymentId !== intent.provider_payment_id || JSON.stringify(before) !== JSON.stringify(after)) fail('REPLAY_IDEMPOTENCY_INVALID');
+  out.replay = { status: 'SAME_CONFIRMED_RESULT', provider_order_id: replay.providerOrderId, provider_payment_id: replay.providerPaymentId, new_orders: after.orders - before.orders, new_ledger_rows: after.ledger - before.ledger, new_passport_usages: after.usage - before.usage };
+  closeDefaultDb();
+  const reloaded = getDb().db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get();
+  if (!reloaded || reloaded.state !== 'PAYMENT_CONFIRMED' || reloaded.provider_order_id !== intent.provider_order_id || reloaded.provider_payment_id !== intent.provider_payment_id) fail('RELOAD_PERSISTENCE_INVALID');
+  out.reload_persistence = 'VALID';
+  out.intent_state = reloaded.state;
+  out.order_count = after.orders;
+  out.ledger_count = after.ledger;
+  out.passport_usage_count = after.usage;
+  out.captured_amount_paise = provider.amountPaise;
+  out.captured_currency = provider.currency;
+  console.log(JSON.stringify(out));
+}
+main().catch((error) => { console.log(JSON.stringify({ status: 'NEEDS FIXES', category: error instanceof Error ? error.name : 'unknown' })); process.exitCode = 1; }).finally(() => closeDefaultDb());

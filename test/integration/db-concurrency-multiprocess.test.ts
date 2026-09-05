@@ -180,7 +180,10 @@ function raceN(
 // Test scaffold
 // ---------------------------------------------------------------------------
 
-const ROUNDS = 5;
+const configuredRounds = Number(process.env.CONCURRENCY_STRESS_ROUNDS || '5');
+const ROUNDS = Number.isSafeInteger(configuredRounds) && configuredRounds >= 1 && configuredRounds <= 100
+  ? configuredRounds
+  : 5;
 const testDbDir = path.resolve(process.cwd(), 'data/test');
 
 function freshDb(label: string): string {

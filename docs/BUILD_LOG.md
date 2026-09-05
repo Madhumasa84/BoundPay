@@ -34,3 +34,13 @@
 ## Human review still required
 
 Review final copy, run live-model cases, complete and verify a real Razorpay TEST transaction/dashboard record, inspect the deployed HTTPS/webhook behavior, replace development credentials, and rehearse the evidence distinctions. No deployment, publication, message, or submission was performed.
+
+## Phase 4 Authority Passport implementation
+
+Phase 4 adds immutable, versioned Authority Passports and signed authorization decision receipts without replacing the Phase 3 proposal, policy, approval, reservation, adapter, audit, or Razorpay TEST architecture. A passport is an EdDSA compact JWS verified against a server-controlled `kid` registry. The private key is read only from server configuration/key files; `pnpm run authority:keys` generates ignored local files without printing private material. `passport_usages` is durable and unique per `(passport_id, intent_id)`; its consuming statuses include RESERVED, COMMITTED, CONFIRMED, and UNKNOWN. Revocation is an owner-checked durable status update and is rechecked under the same SQLite `BEGIN IMMEDIATE` claim and again before provider dispatch.
+
+The effective decision is the intersection of current policy, signed passport, trusted catalog, existing commitments, and exact approval. Decision receipts cover ALLOWED, NEEDS_APPROVAL, BLOCKED, EXPIRED, and REVOKED outcomes and are proof statements, not execution capabilities or payment receipts. The `/passports` interface and Shop debugger expose sources, stable reason codes, budget projections, policy/passport differences, stale-approval warnings, and receipt verification without exposing signing secrets.
+
+Phase 4 automated coverage includes domain/schema boundaries, EdDSA/JWS tampering and claim checks, owner/agent/IDOR security, fixed-seed fast-check properties (200 runs per seed), worker-thread contention with independent SQLite connections and SharedArrayBuffer barriers, clean and copied-database migrations, and Chromium UI/keyboard/mobile/proof flows. All browser/integration automation uses `AGENT_MODE=fixture` and `PAYMENT_ADAPTER_MODE=MOCK`; no Sarvam or Razorpay HTTP request is made. The existing Razorpay TEST evidence artifact is not rerun or replaced.
+
+Use `DATABASE_PATH=/tmp/boundpay-e2e.sqlite pnpm run test:e2e` (the script now defaults to this isolated path) so browser resets cannot touch a persistent project database. Never run a reset command against a database containing verified provider evidence.

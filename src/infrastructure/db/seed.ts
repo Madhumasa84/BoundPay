@@ -5,6 +5,8 @@ import { runMigrations } from './migrate';
 import { SEED_CATALOG_ITEMS } from '../../domain/catalog';
 import { DEFAULT_POLICY } from '../../domain/policy';
 import { eq } from 'drizzle-orm';
+import { ensureDefaultPassport } from '../../services/passport.service';
+import { AuthorityConfigurationError } from '../authority/signing';
 
 export function seedDatabase(dbPath: string = getDatabasePath()) {
   const sqlite = createSqliteConnection(dbPath);
@@ -79,7 +81,30 @@ export function seedDatabase(dbPath: string = getDatabasePath()) {
     }
   }
 
-  // 4. Log Seed Audit Event
+  // 4. Seed one visible OfficeBot passport for the Phase 4 demo. Existing
+  // databases are never overwritten; production requires explicit signing
+  // configuration and therefore fails closed rather than creating unsigned authority.
+  // The service layer uses the configured default DB connection, so temporarily
+  // align DATABASE_PATH with an explicitly supplied seed target. This keeps
+  // `seedDatabase(tempPath)` safe for migration/tests without touching another
+  // database (and restores the caller's environment afterward).
+  const previousDatabasePath = process.env.DATABASE_PATH;
+  process.env.DATABASE_PATH = dbPath;
+  try {
+    ensureDefaultPassport(operatorId);
+    console.log('[Seed] Ensured default OfficeBot authority passport');
+  } catch (error) {
+    if (error instanceof AuthorityConfigurationError && process.env.NODE_ENV !== 'production') {
+      console.warn('[Seed] Authority passport skipped: configure AUTHORITY_SIGNING_PRIVATE_KEY before issuing passports');
+    } else {
+      throw error;
+    }
+  } finally {
+    if (previousDatabasePath === undefined) delete process.env.DATABASE_PATH;
+    else process.env.DATABASE_PATH = previousDatabasePath;
+  }
+
+  // 5. Log Seed Audit Event
   db.insert(schema.auditEvents).values({
     timestamp: nowIso,
     event_type: 'DATABASE_SEEDED',

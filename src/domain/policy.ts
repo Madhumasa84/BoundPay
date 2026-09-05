@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assertPositivePaise, assertValidPaise, CURRENCY, Currency } from './money';
+import { assertPositivePaise, assertValidPaise, calculateTotalPaise, CURRENCY, Currency } from './money';
 import { Product } from './catalog';
 
 export interface SpendingPolicy {
@@ -18,9 +18,9 @@ export interface SpendingPolicy {
 
 export const PolicyUpdateSchema = z.object({
   currency: z.literal(CURRENCY).default(CURRENCY),
-  max_transaction_amount_paise: z.number().int().positive('Max transaction amount must be positive'),
-  daily_budget_paise: z.number().int().positive('Daily budget must be positive'),
-  approval_threshold_paise: z.number().int().nonnegative('Approval threshold must be non-negative'),
+  max_transaction_amount_paise: z.number().int().safe().positive('Max transaction amount must be positive'),
+  daily_budget_paise: z.number().int().safe().positive('Daily budget must be positive'),
+  approval_threshold_paise: z.number().int().safe().nonnegative('Approval threshold must be non-negative'),
   allowed_categories: z.array(z.string().min(1)).min(1, 'At least one allowed category is required'),
   approved_merchant_id: z.string().min(1, 'Approved merchant ID is required'),
   allow_subscriptions: z.boolean(),
@@ -95,12 +95,18 @@ export function evaluateSpendingPolicy(params: EvaluatePolicyParams): PolicyEval
   assertPositivePaise(purchaseBudgetPaise, 'purchaseBudgetPaise');
   assertValidPaise(currentDayConfirmedPaise, 'currentDayConfirmedPaise');
   assertValidPaise(currentActiveReservationsPaise, 'currentActiveReservationsPaise');
+  assertPositivePaise(policy.max_transaction_amount_paise, 'policy.max_transaction_amount_paise');
+  assertPositivePaise(policy.daily_budget_paise, 'policy.daily_budget_paise');
+  assertValidPaise(policy.approval_threshold_paise, 'policy.approval_threshold_paise');
 
   const checks: PolicyCheckResult[] = [];
   const blockingReasons: string[] = [];
   const requiresApprovalReasons: string[] = [];
 
-  const totalAmountPaise = product.unit_price_paise * quantity;
+  // Keep the evaluator on the same checked integer arithmetic path used by
+  // execution. This rejects excessive quantities and safe-integer overflow
+  // instead of allowing a rounded/unsafe total into authorization decisions.
+  const totalAmountPaise = calculateTotalPaise(product.unit_price_paise, quantity);
   const effectiveMaxTransactionPaise = Math.min(policy.max_transaction_amount_paise, purchaseBudgetPaise);
 
   // 1. Currency Check
@@ -212,6 +218,7 @@ export function evaluateSpendingPolicy(params: EvaluatePolicyParams): PolicyEval
 
   // 8. Daily Budget Available Check
   const projectedTotalSpend = currentDayConfirmedPaise + currentActiveReservationsPaise + totalAmountPaise;
+  assertValidPaise(projectedTotalSpend, 'projectedDailySpendPaise');
   const dailyBudgetPassed = projectedTotalSpend <= policy.daily_budget_paise;
   checks.push({
     rule: 'DAILY_BUDGET_AVAILABLE',

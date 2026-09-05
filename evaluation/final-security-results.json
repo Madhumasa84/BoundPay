@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-05T02:36:28+05:30",
+  "git": {
+    "branch": "main",
+    "head": "0e8110ab303e7be54ad0e45a3b5012fcc8e36e52",
+    "worktree": "uncommitted Phase 4 implementation plus verifier remediations"
+  },
+  "environment": {
+    "node": "v20.20.2",
+    "pnpm": "10.33.0",
+    "vitest": "4.1.11",
+    "playwright": "1.62.1",
+    "jose": "6.2.11",
+    "agentMode": "fixture",
+    "browserPaymentAdapterMode": "MOCK",
+    "realProviderNetworkAllowed": false
+  },
+  "commands": [
+    { "command": "pnpm run typecheck", "phase": "baseline", "exitCode": 0, "durationSeconds": 7.49 },
+    { "command": "pnpm run lint", "phase": "baseline", "exitCode": 0, "durationSeconds": 2.30 },
+    { "command": "pnpm test", "phase": "baseline", "exitCode": 0, "durationSeconds": 69.57, "testFiles": 24, "testsPassed": 310 },
+    { "command": "pnpm run test:e2e", "phase": "baseline", "exitCode": 1, "durationSeconds": 23.65, "testsPassed": 17, "testsFailed": 1, "finding": "manual passport selection overwritten by hydration" },
+    { "command": "pnpm test", "phase": "final-repeat-1", "exitCode": 0, "durationSeconds": 25.91, "testFiles": 26, "testsPassed": 333 },
+    { "command": "pnpm vitest run --sequence.shuffle --sequence.seed 735001", "phase": "randomized", "exitCode": 0, "durationSeconds": 27.05, "testFiles": 26, "testsPassed": 333 },
+    { "command": "pnpm vitest run --sequence.shuffle --sequence.seed 735002", "phase": "randomized", "exitCode": 0, "durationSeconds": 25.96, "testFiles": 26, "testsPassed": 333 },
+    { "command": "pnpm vitest run --sequence.shuffle --sequence.seed 735003", "phase": "randomized", "exitCode": 0, "durationSeconds": 26.31, "testFiles": 26, "testsPassed": 333 },
+    { "command": "pnpm test", "phase": "final-repeat-5", "exitCode": 0, "durationSeconds": 26.17, "testFiles": 27, "testsPassed": 335 },
+    { "command": "pnpm run test:stress", "phase": "final", "exitCode": 0, "durationSeconds": 73.01, "testFiles": 2, "testsPassed": 7, "rounds": 25 },
+    { "command": "pnpm run test:e2e", "phase": "final-repeat-1", "exitCode": 0, "durationSeconds": 24.78, "testsPassed": 18 },
+    { "command": "pnpm run test:e2e", "phase": "final-repeat-2", "exitCode": 0, "durationSeconds": 25.54, "testsPassed": 18 },
+    { "command": "pnpm run test:deterministic", "phase": "final", "exitCode": 0, "durationSeconds": 16.4, "testsPassed": 100 },
+    { "command": "pnpm run typecheck", "phase": "final", "exitCode": 0, "durationSeconds": 2.98 },
+    { "command": "pnpm run lint", "phase": "final", "exitCode": 0, "durationSeconds": 2.24, "warnings": 0, "errors": 0 },
+    { "command": "pnpm run build", "phase": "final", "exitCode": 0, "durationSeconds": 30.11 },
+    { "command": "pnpm audit --prod", "phase": "final", "exitCode": 0, "result": "No known vulnerabilities found" },
+    { "command": "pnpm install --offline --frozen-lockfile", "phase": "final", "exitCode": 0, "result": "lockfile up to date" },
+    { "command": "pnpm run security:public-artifacts", "phase": "final", "exitCode": 0, "filesScanned": 94 }
+  ],
+  "propertyTests": {
+    "seeds": [4101, 4102, 1278130507],
+    "runsPerPropertyPerSeed": 500,
+    "criticalProperties": 8,
+    "generatedCases": 12000,
+    "result": "pass"
+  },
+  "contention": {
+    "workerThreads": {
+      "independentSQLiteConnections": true,
+      "startBarrier": "SharedArrayBuffer/Atomics",
+      "rounds": 25,
+      "cases": [
+        "two intents compete for final budget/use",
+        "five same-intent executions",
+        "revocation versus reservation",
+        "expiry boundary",
+        "policy reduction versus reservation",
+        "catalog price update versus reservation",
+        "MOCK/RAZORPAY_TEST namespace isolation"
+      ],
+      "result": "pass"
+    },
+    "osProcesses": {
+      "actualChildProcesses": true,
+      "independentSQLiteConnections": true,
+      "cases": ["two processes compete for final passport use/budget", "five processes replay one intent"],
+      "result": "pass"
+    },
+    "callbackRefreshRace": "one confirmation transition, ledger row and passport usage row"
+  },
+  "migrations": {
+    "temporaryPathsOnly": true,
+    "cleanMigrateSeedRerun": "pass",
+    "historicalDatabaseCopy": "pass",
+    "interruptedOrInvalidRowRollback": "pass",
+    "foreignKeyCheck": "pass",
+    "integrityCheck": "ok",
+    "originalDatabaseModified": false
+  },
+  "findings": {
+    "critical": { "open": 0, "fixed": 0 },
+    "high": { "open": 0, "fixed": 7 },
+    "medium": { "open": 0, "fixed": 4 },
+    "low": { "open": 0, "fixed": 0 },
+    "documentedLimitations": [
+      "synchronous signing/enforcement serialization uses Node crypto; jose performs async and offline verification",
+      "external payment execution is not exactly-once; UNKNOWN requires reconciliation",
+      "revocation cannot cancel an order already validly dispatched",
+      "missing Origin/Referer relies on SameSite=Lax for browser CSRF mitigation",
+      "Playwright scenarios intentionally use one worker and one reset demo database",
+      "no Phase 4 Razorpay TEST transaction was executed"
+    ]
+  },
+  "providerCalls": {
+    "sarvamHttpRequests": 0,
+    "razorpayHttpRequests": 0,
+    "razorpayLiveOrders": 0,
+    "razorpayTestOrders": 0,
+    "injectedMockAdapterCallsOnly": true
+  },
+  "secretScan": {
+    "gitleaksAvailable": false,
+    "trufflehogAvailable": false,
+    "gitNativeScopes": ["tracked files", "staged diff", "working-tree diff", "all reachable Git history"],
+    "generatedArtifactFilesCompared": 94,
+    "configuredSecretValuesFoundInPublicArtifacts": false,
+    "trackedPemJwkDatabaseOrScreenshotFound": false,
+    "envLocalIgnored": true,
+    "limitations": "Pattern and exact-value comparison cannot prove absence from unscanned external systems or future artifacts."
+  },
+  "evidenceHashes": {
+    "evaluation/deterministic-results.json": { "before": "54cf454490d50c2eb1b9db292df8d6fbe029d61f6f45ec44975781ad7ef6276b", "after": "54cf454490d50c2eb1b9db292df8d6fbe029d61f6f45ec44975781ad7ef6276b" },
+    "evaluation/live-model-results.json": { "before": "ae11f080ea19feaac0b6049b82f88f5b9f5b0d5b06cd64f024896712a480e1e6", "after": "ae11f080ea19feaac0b6049b82f88f5b9f5b0d5b06cd64f024896712a480e1e6" },
+    "evaluation/razorpay-test-results.json": { "before": "0b46764b33048b93f62a4fb5a39dcc0e1d946f5b474045e5d47691e60bff6cf2", "after": "0b46764b33048b93f62a4fb5a39dcc0e1d946f5b474045e5d47691e60bff6cf2" },
+    "docs/RAZORPAY_TEST_VERIFICATION.md": { "before": "a9814b1002ae789b5795c925dc6dd5136de8e6ac06aefef4de86459857f76959", "after": "a9814b1002ae789b5795c925dc6dd5136de8e6ac06aefef4de86459857f76959" },
+    "data/boundpay.sqlite": { "before": "86cd1457db7b9eb6a48c9c90b2ce75c6ac2c7d209af86b63e84e289b7b987874", "after": "86cd1457db7b9eb6a48c9c90b2ce75c6ac2c7d209af86b63e84e289b7b987874" }
+  },
+  "phase4RazorpayTestTransactionOccurred": false,
+  "verdict": "SUBMISSION-SAFE WITH DOCUMENTED LIMITATIONS"
+}

@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 const UpdateProductSchema = z.object({
   name: z.string().min(1).max(128).optional(),
   description: z.string().max(1024).optional(),
-  unit_price_paise: z.number().int().positive().optional(),
+  unit_price_paise: z.number().int().safe().positive().optional(),
   category: z.string().min(1).max(64).optional(),
   is_subscription: z.boolean().optional(),
   merchant_id: z.string().min(1).max(64).optional(),

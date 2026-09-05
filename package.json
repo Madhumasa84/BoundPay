@@ -13,15 +13,19 @@
     "test:unit": "vitest run test/unit",
     "test:property": "vitest run test/property",
     "test:integration": "vitest run test/integration",
+    "test:stress": "AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK AUTHORITY_TEST_MODE=true CONCURRENCY_STRESS_ROUNDS=25 vitest run test/integration/db-concurrency-multiprocess.test.ts test/integration/authority-passport-process-contention.test.ts",
     "test:deterministic": "vitest run test/evaluation/deterministic-manifest.test.ts",
     "test:state": "vitest run test/property/state-machine-sequences.prop.test.ts",
     "eval:manifest": "tsx evaluation/generate-manifest.ts",
     "eval:latency": "tsx evaluation/benchmark-policy.ts",
     "eval:live": "tsx evaluation/run-live-model-evaluation.ts",
-    "test:e2e": "CONFIRM_RESET=true tsx src/infrastructure/db/reset.ts && playwright test",
+    "test:e2e": "AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK PAYMENT_MODE=mock AUTHORITY_TEST_MODE=true AUTHORITY_SIGNING_PRIVATE_KEY= AUTHORITY_SIGNING_PUBLIC_KEY= AUTHORITY_SIGNING_PRIVATE_KEY_FILE= AUTHORITY_SIGNING_PUBLIC_KEY_FILE= AUTHORITY_VERIFICATION_KEYS_JSON= RAZORPAY_KEY_ID= RAZORPAY_KEY_SECRET= RAZORPAY_WEBHOOK_SECRET= SARVAM_API_KEY= DATABASE_PATH=/tmp/boundpay-e2e.sqlite CONFIRM_RESET=true tsx src/infrastructure/db/reset.ts && AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK PAYMENT_MODE=mock AUTHORITY_TEST_MODE=true AUTHORITY_SIGNING_PRIVATE_KEY= AUTHORITY_SIGNING_PUBLIC_KEY= AUTHORITY_SIGNING_PRIVATE_KEY_FILE= AUTHORITY_SIGNING_PUBLIC_KEY_FILE= AUTHORITY_VERIFICATION_KEYS_JSON= RAZORPAY_KEY_ID= RAZORPAY_KEY_SECRET= RAZORPAY_WEBHOOK_SECRET= SARVAM_API_KEY= DATABASE_PATH=/tmp/boundpay-e2e.sqlite playwright test",
     "db:migrate": "tsx src/infrastructure/db/migrate.ts",
     "db:seed": "tsx src/infrastructure/db/seed.ts",
-    "db:reset": "tsx src/infrastructure/db/reset.ts"
+    "db:reset": "tsx src/infrastructure/db/reset.ts",
+    "authority:keys": "tsx scripts/generate-authority-keys.ts",
+    "authority:validate": "tsx scripts/validate-authority-config.ts",
+    "security:public-artifacts": "tsx scripts/check-public-secret-exposure.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -38,6 +42,7 @@
     "better-sqlite3": "^11.8.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
+    "jose": "^6.2.11",
     "lucide-react": "^1.39.0",
     "next": "15.5.21",
     "openai": "^7.9.0",

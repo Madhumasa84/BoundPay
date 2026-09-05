@@ -12,6 +12,18 @@
 
 These classes are not combined into a success percentage.
 
+## Phase 4 evidence labels
+
+| Claim | Evidence label | Scope |
+|---|---|---|
+| Passport schema, signing, intersection, receipts, revocation, and accounting | **VERIFIED IN AUTOMATED TEST** | Vitest domain/crypto/security/property/integration suites with deterministic test keys and fresh SQLite files |
+| Passport UI, debugger, keyboard/mobile behavior, receipt proof flow | **VERIFIED IN AUTOMATED TEST** | Chromium Playwright in `AGENT_MODE=fixture`, `PAYMENT_ADAPTER_MODE=MOCK` |
+| Existing Razorpay TEST transaction | **VERIFIED IN RAZORPAY TEST MODE** | Historical Phase 3 evidence files; Phase 4 creates no provider order |
+| Existing Sarvam 20-case evaluation | **VERIFIED IN LIVE SARVAM EVALUATION** / **REPORTED / NOT RERUN** | Historical Phase 3 artifact; not rerun for Phase 4 |
+| Public deployment, webhook reachability, production key rotation, power-loss recovery | **PENDING** / **OUT OF SCOPE** | No deployment, tunnel, or real-money mode is introduced |
+
+Phase 4 automated tests use deterministic Ed25519 test keys, isolated temporary SQLite databases, fixture agent mode, and MOCK payment mode. No Sarvam or Razorpay HTTP request is permitted by these suites.
+
 ## Deterministic method
 
 The checked-in 100-case manifest covers 30 autonomous valid purchases, 10 approval purchases, 15 budget violations, 10 category/subscription cases, 5 unapproved merchants, 5 expired policy/quote cases, 10 changed catalog/policy cases, 10 idempotency cases, and 5 forced-compromise subscription proposals. Every case creates an isolated migrated/seeded SQLite WAL database and calls production proposal, approval, catalog/policy, execution, audit, and ledger services. Only the external payment boundary is a counting capture fixture.
@@ -26,9 +38,9 @@ Phase 3 adds fixed seeds `424242` and `20260903` with 200 generated sequences/in
 
 Integration tests cover the two-keyboard budget race, repeated execution claims, approval/denial race, version edits racing execution, close/reopen persistence, adapter isolation, callback/webhook replay, early webhooks, wrong-amount early-webhook reconciliation, status refresh, and stale-execution recovery. Faults cover rejection, timeout, response loss, pending capture, duplicate capture, and thrown adapter exceptions.
 
-**Cross-connection concurrency (added Phase 3 gap-closure 2026-09-03):** `test/integration/db-concurrency-multiprocess.test.ts` (5 tests, 243 total) spawns independent `worker_threads`, each with its own `better-sqlite3` connection. A `SharedArrayBuffer` Atomics barrier releases all workers simultaneously to maximise write-lock contention. Scenarios: (A) two 279,900-paise purchases vs 500,000-paise daily budget — at most one reservation, no RAZORPAY_TEST namespace pollution; (B) 5 simultaneous executions of same intent — exactly one ledger row, idempotent; (C) policy-budget reduction racing reservation — no partial ledger, active spend within original budget; (D) catalog price change racing reservation — no stale-approval new-price reservation; (E) MOCK namespace isolation. Each scenario runs 5 rounds to exercise timing variance.
+**Worker-thread contention (Phase 3 gap-closure):** `test/integration/db-concurrency-multiprocess.test.ts` (historical filename retained) spawns independent `worker_threads`, each with its own `better-sqlite3` connection. A `SharedArrayBuffer` Atomics barrier releases all workers simultaneously to maximise write-lock contention. The file does not introduce OS processes. Phase 4 adds `test/integration/authority-passport-concurrency.test.ts` for one-use/one-budget races, same-intent replay, revocation, expiry, and policy/catalog races.
 
-**Method disclosure:** The previous `db-concurrency.test.ts` used `Promise.all` within the same Node.js event loop. Because `better-sqlite3` is synchronous, those calls never created real write-lock contention. The new tests use actual OS-level thread concurrency via worker_threads. This gap is now documented and closed for the single-process, single-SQLite-file deployment model. Multi-OS-process coordination, power-loss, and storage corruption remain out of scope.
+**Method disclosure:** The previous `db-concurrency.test.ts` used `Promise.all` within the same Node.js event loop. Because `better-sqlite3` is synchronous, those calls never created real write-lock contention. The new tests use worker-thread contention with independent SQLite connections. This gap is documented and closed for the single-process, single-SQLite-file deployment model. Multi-OS-process coordination, power-loss, and storage corruption remain out of scope.
 
 ## Latency
 

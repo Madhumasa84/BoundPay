@@ -19,7 +19,7 @@ export const ProductInputSchema = z.object({
   id: z.string().min(1).max(64),
   name: z.string().min(1).max(128),
   description: z.string().max(1024),
-  unit_price_paise: z.number().int().positive(),
+  unit_price_paise: z.number().int().safe().positive(),
   currency: z.literal(CURRENCY),
   category: z.string().min(1).max(64),
   is_subscription: z.boolean(),

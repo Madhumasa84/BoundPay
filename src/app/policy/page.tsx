@@ -102,10 +102,10 @@ export default function PolicyPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
-            <ShieldCheck className="w-6 h-6 text-blue-600" />
+          <h1 className="text-lg font-bold text-slate-900 flex items-center space-x-2.5">
+            <ShieldCheck className="w-5 h-5 text-blue-600" />
             <span>Spending Policy Authority</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -113,77 +113,77 @@ export default function PolicyPage() {
           </p>
         </div>
         {policy && (
-          <div className="bg-slate-900 text-white px-3.5 py-1.5 rounded-lg text-xs font-mono flex items-center space-x-2">
+          <div className="bg-slate-900 text-white px-3.5 py-1.5 rounded-xl text-xs font-mono flex items-center space-x-2 border border-slate-800 shadow-2xs self-start sm:self-auto">
             <span className="text-slate-400">Policy Version:</span>
-            <span className="font-bold text-emerald-400 text-sm">v{policy.version}</span>
+            <span className="font-bold text-emerald-400 text-xs">v{policy.version}</span>
           </div>
         )}
       </div>
 
       {feedback && (
         <div
-          className={`p-4 rounded-lg border text-sm flex items-start space-x-2.5 ${
+          className={`p-4 rounded-xl border text-xs flex items-start space-x-2.5 shadow-2xs ${
             feedback.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-              : 'bg-red-50 border-red-200 text-red-900'
+              ? 'bg-emerald-50/80 border-emerald-200/90 text-emerald-950 font-medium'
+              : 'bg-rose-50/80 border-rose-200/90 text-rose-950 font-medium'
           }`}
         >
           {feedback.type === 'success' ? (
-            <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
           ) : (
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
           )}
-          <span>{feedback.message}</span>
+          <span className="leading-relaxed">{feedback.message}</span>
         </div>
       )}
 
       {/* Live Budget Usage Cards */}
       {usage && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Daily Budget
             </div>
             <div className="text-base font-bold text-slate-900 mt-1">
               {formatPaise(usage.dailyBudgetPaise)}
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">
+            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
               {usage.dailyBudgetPaise} paise
             </div>
           </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
               Confirmed Spend Today
             </div>
             <div className="text-base font-bold text-emerald-700 mt-1">
               {formatPaise(usage.confirmedSpendTodayPaise)}
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">
+            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
               Asia/Kolkata window
             </div>
           </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">
               Active Reservations
             </div>
             <div className="text-base font-bold text-amber-700 mt-1">
               {formatPaise(usage.activeReservationsPaise)}
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">
+            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
               Locked budget
             </div>
           </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">
               Remaining Budget
             </div>
             <div className="text-base font-bold text-blue-700 mt-1">
               {formatPaise(usage.remainingDailyBudgetPaise)}
             </div>
-            <div className="text-[10px] text-slate-400 font-mono">
+            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
               Available to reserve
             </div>
           </div>
@@ -191,12 +191,12 @@ export default function PolicyPage() {
       )}
 
       {/* Explanation Banner */}
-      <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-950 text-xs space-y-1">
-        <div className="font-bold flex items-center space-x-1.5 text-blue-900">
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/90 text-slate-800 text-xs space-y-1.5 shadow-2xs">
+        <div className="font-semibold flex items-center space-x-1.5 text-slate-900">
           <Info className="w-4 h-4 text-blue-600" />
           <span>Financial Protection Rules</span>
         </div>
-        <p className="text-slate-700 leading-relaxed">
+        <p className="text-slate-600 leading-relaxed space-y-1">
           &bull; <strong>Committed Reservations:</strong> Existing orders retain their reservations regardless of calendar day changes or policy edits.<br />
           &bull; <strong>Reduction Protection:</strong> The daily budget cannot be reduced below current committed spending ({usage ? formatPaise(usage.totalCommittedPaise) : '...'} paise).<br />
           &bull; <strong>Invalidation Guarantee:</strong> Saving a new policy version increments the version number, requiring unexecuted proposals and approvals to be re-evaluated.
@@ -204,10 +204,10 @@ export default function PolicyPage() {
       </div>
 
       {/* Editable Form */}
-      <form onSubmit={handleSave} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
+      <form onSubmit={handleSave} className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label htmlFor="max-transaction" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="max-transaction" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Max Transaction Limit (₹)
             </label>
             <input
@@ -217,15 +217,15 @@ export default function PolicyPage() {
               required
               value={maxTxRupees}
               onChange={(e) => setMaxTxRupees(parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 border border-slate-200/90 rounded-xl text-xs font-mono font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500/40 bg-white"
             />
-            <div className="text-[10px] text-slate-500 mt-0.5">
+            <div className="text-[11px] text-slate-400 font-mono mt-1">
               = {Math.round(maxTxRupees * 100).toLocaleString('en-IN')} paise
             </div>
           </div>
 
           <div>
-            <label htmlFor="daily-budget" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="daily-budget" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Daily Spend Budget (₹)
             </label>
             <input
@@ -235,15 +235,15 @@ export default function PolicyPage() {
               required
               value={dailyBudgetRupees}
               onChange={(e) => setDailyBudgetRupees(parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 border border-slate-200/90 rounded-xl text-xs font-mono font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500/40 bg-white"
             />
-            <div className="text-[10px] text-slate-500 mt-0.5">
+            <div className="text-[11px] text-slate-400 font-mono mt-1">
               = {Math.round(dailyBudgetRupees * 100).toLocaleString('en-IN')} paise
             </div>
           </div>
 
           <div>
-            <label htmlFor="approval-threshold" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="approval-threshold" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Approval Threshold (₹)
             </label>
             <input
@@ -253,9 +253,9 @@ export default function PolicyPage() {
               required
               value={approvalThresholdRupees}
               onChange={(e) => setApprovalThresholdRupees(parseFloat(e.target.value) || 0)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 border border-slate-200/90 rounded-xl text-xs font-mono font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500/40 bg-white"
             />
-            <div className="text-[10px] text-slate-500 mt-0.5">
+            <div className="text-[11px] text-slate-400 mt-1">
               Above this requires human approval
             </div>
           </div>
@@ -263,7 +263,7 @@ export default function PolicyPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="allowed-categories" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="allowed-categories" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Allowed Categories (comma separated)
             </label>
             <input
@@ -272,13 +272,13 @@ export default function PolicyPage() {
               required
               value={allowedCategoriesText}
               onChange={(e) => setAllowedCategoriesText(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 border border-slate-200/90 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/40 bg-white"
               placeholder="electronics, books"
             />
           </div>
 
           <div>
-            <label htmlFor="approved-merchant" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="approved-merchant" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Approved Merchant ID
             </label>
             <input
@@ -287,7 +287,7 @@ export default function PolicyPage() {
               required
               value={approvedMerchant}
               onChange={(e) => setApprovedMerchant(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 border border-slate-200/90 rounded-xl text-xs font-mono text-slate-900 focus:ring-2 focus:ring-blue-500/40 bg-white"
               placeholder="demo_store"
             />
           </div>
@@ -295,7 +295,7 @@ export default function PolicyPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-2">
           <div>
-            <label htmlFor="policy-expiry" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label htmlFor="policy-expiry" className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
               Policy Expiry Date & Time
             </label>
             <input
@@ -304,34 +304,34 @@ export default function PolicyPage() {
               required
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3.5 py-2.5 border border-slate-200/90 rounded-xl text-xs text-slate-900 font-mono focus:ring-2 focus:ring-blue-500/40 bg-white"
             />
           </div>
 
-          <div className="pt-5">
-            <label className="inline-flex items-center space-x-2 cursor-pointer">
+          <div className="pt-2 sm:pt-4">
+            <label className="inline-flex items-center space-x-2.5 cursor-pointer">
               <input
                 type="checkbox"
                 aria-label="Allow subscription products"
                 checked={allowSubscriptions}
                 onChange={(e) => setAllowSubscriptions(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
-              <span className="text-xs font-semibold text-slate-700">
+              <span className="text-xs font-semibold text-slate-800">
                 Allow Subscription Products
               </span>
             </label>
-            <div className="text-[11px] text-slate-500 ml-6 mt-0.5">
+            <div className="text-[11px] text-slate-400 ml-6 mt-0.5">
               Default is strictly unchecked (prohibited) for Phase 1.
             </div>
           </div>
         </div>
 
-        <div className="pt-4 border-t flex justify-end">
+        <div className="pt-4 border-t border-slate-100 flex justify-end">
           <button
             type="submit"
             disabled={saving}
-            className="py-2.5 px-6 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 transition text-sm shadow-sm"
+            className="py-2.5 px-6 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-500 active:scale-[0.99] disabled:opacity-50 transition text-xs shadow-sm shadow-blue-500/20 cursor-pointer"
           >
             {saving ? 'Updating Policy...' : 'Save & Publish New Policy Version'}
           </button>

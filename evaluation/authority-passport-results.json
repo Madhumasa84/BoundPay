@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "phase": "PHASE_4",
+  "feature": "AUTHORITY_PASSPORTS",
+  "evidenceLabels": {
+    "domainCryptoPolicy": "VERIFIED IN AUTOMATED TEST",
+    "browser": "VERIFIED IN AUTOMATED TEST",
+    "razorpay": "VERIFIED IN RAZORPAY TEST MODE",
+    "sarvam": "REPORTED / NOT RERUN",
+    "publicDeployment": "PENDING"
+  },
+  "authority": {
+    "algorithm": "EdDSA",
+    "curve": "Ed25519",
+    "passportSchemaVersion": 1,
+    "receiptSchemaVersion": 1,
+    "currency": "INR",
+    "validitySemantics": "UTC canonical ISO-8601",
+    "lifecycle": ["ACTIVE", "REVOKED", "EXPIRED"],
+    "consumingUsageStatuses": ["RESERVED", "COMMITTED", "CONFIRMED", "UNKNOWN"],
+    "releasedUsageStatus": "RELEASED",
+    "proofLimitation": "Signature integrity only; does not prove database completeness, signing-host integrity, or bank/provider settlement."
+  },
+  "automatedTestPlan": {
+    "agentMode": "fixture",
+    "paymentAdapterMode": "MOCK",
+    "realSarvamRequests": 0,
+    "realRazorpayRequests": 0,
+    "propertySeeds": [4101, 4102],
+    "propertyRunsPerSeed": 200,
+    "workerContention": [
+      "one remaining passport usage and budget",
+      "same intent replay",
+      "revocation racing reservation",
+      "expiry boundary racing reservation",
+      "policy/catalog update racing reservation"
+    ],
+    "migrationCases": ["clean migration → seed → migration", "copy of data/boundpay.sqlite migration"]
+  },
+  "historicalEvidence": {
+    "razorpayTest": "Preserved in docs/RAZORPAY_TEST_VERIFICATION.md and prior evaluation artifacts; Phase 4 creates no additional order.",
+    "sarvamEvaluation": "Preserved and not rerun unless necessary."
+  },
+  "finalCommandResults": {
+    "typecheck": "PASS",
+    "lint": "PASS",
+    "vitest": { "status": "PASS", "files": 24, "tests": 310 },
+    "playwright": { "status": "PASS", "tests": 18, "agentMode": "fixture", "paymentAdapterMode": "MOCK" },
+    "build": "PASS",
+    "phase4Migration": { "status": "PASS", "tests": 2 },
+    "authorityConfiguration": "Production configuration fails closed when absent; explicit test-only configuration validated"
+  },
+  "knownLimitations": [
+    "single operator and single application instance",
+    "no multi-organization or role hierarchy",
+    "no refunds/disputes, PostgreSQL, durable workers, SDK, or MCP server",
+    "no audit hash chain or custom cryptography",
+    "no production security, real-money readiness, or exactly-once external payment claim"
+  ],
+  "status": "VERIFIED_FINAL_COMMAND_RESULTS"
+}

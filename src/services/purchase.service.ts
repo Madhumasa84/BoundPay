@@ -14,6 +14,17 @@ import { getProductById } from './catalog.service';
 import { getCurrentPolicy, getDailyBudgetUsage } from './policy.service';
 import { Clock, defaultClock } from '../infrastructure/clock/clock';
 import { appendAuditEvent } from './audit.service';
+import {
+  composePassportAuthorization,
+  ensureDefaultPassport,
+  getPassportById,
+  issueDecisionReceipt,
+  getLatestDecisionReceipt,
+  verifyStoredPassport,
+  PassportNotFoundError,
+  StoredPassport,
+} from './passport.service';
+import { AuthorityVerificationError, getAuthorityConfig } from '../infrastructure/authority/signing';
 
 export const DEFAULT_QUOTE_VALIDITY_SECONDS = 600; // 10 minutes
 
@@ -34,6 +45,9 @@ export class NotFoundError extends Error {
 export interface ProposalResult {
   intent: PurchaseIntent;
   evaluation: PolicyEvaluation;
+  passportEvaluation: ReturnType<typeof composePassportAuthorization>;
+  passport: StoredPassport;
+  decisionReceipt?: ReturnType<typeof issueDecisionReceipt>;
   isExisting: boolean;
 }
 
@@ -44,7 +58,7 @@ export function createProposal(
   clock: Clock = defaultClock
 ): ProposalResult {
   const request = CreateProposalRequestSchema.parse(rawRequest);
-  const { db } = getDb();
+  const { db, sqlite } = getDb();
   const now = clock.now();
   const nowIso = now.toISOString();
 
@@ -57,10 +71,36 @@ export function createProposal(
   // 2. Resolve current spending policy
   const policy = getCurrentPolicy();
 
-  // 3. Query current budget usage for policy evaluation
+  // 3. Resolve exactly one signed passport. The compatibility path creates the
+  // seeded OfficeBot passport for legacy Phase 3 callers that omitted a passport.
+  const passport = request.passport_id
+    ? getPassportById(request.passport_id, ownerId, nowIso)
+    : ensureDefaultPassport(ownerId, clock, paymentAdapterMode);
+  if (!passport) throw new PassportNotFoundError('Authority passport not found');
+  const agentId = request.agent_id || passport.payload.agentId;
+  let signatureValid = false;
+  try {
+    verifyStoredPassport(passport, ownerId, agentId, nowIso);
+    signatureValid = true;
+  } catch (error) {
+    if (error instanceof AuthorityVerificationError) {
+      throw new AuthorityVerificationError('Authority passport verification failed');
+    }
+    throw error;
+  }
+
+  // Receipts are signed at authorization time. Fail closed if the authority
+  // signer is unavailable instead of creating an unreceipted intent.
+  if (signatureValid) {
+    // The signing module performs strict key validation and only allows the
+    // deterministic fallback in test mode.
+    getAuthorityConfig({ requirePrivate: true });
+  }
+
+  // 4. Query current budget usage for policy evaluation
   const budgetUsage = getDailyBudgetUsage(paymentAdapterMode, clock, policy);
 
-  // 4. Deterministic policy evaluation
+  // 5. Deterministic policy evaluation
   const evaluation = evaluateSpendingPolicy({
     policy,
     product,
@@ -71,10 +111,37 @@ export function createProposal(
     nowIso,
   });
 
+  const passportEvaluation = composePassportAuthorization({
+    passport,
+    ownerId,
+    agentId,
+    product,
+    quantity: request.quantity,
+    policy,
+    policyEvaluation: evaluation,
+    currentServerBudgetPaise: budgetUsage.confirmedSpendTodayPaise + budgetUsage.activeReservationsPaise,
+    paymentAdapterMode,
+    nowIso,
+    signatureValid,
+  });
+  const effectiveEvaluation: PolicyEvaluation = {
+    ...evaluation,
+    verdict: passportEvaluation.decision === 'ALLOWED' ? 'ALLOWED' : passportEvaluation.decision === 'NEEDS_APPROVAL' ? 'NEEDS_APPROVAL' : 'BLOCKED',
+    state: passportEvaluation.decision === 'ALLOWED' ? 'READY' : passportEvaluation.decision === 'NEEDS_APPROVAL' ? 'NEEDS_APPROVAL' : 'BLOCKED',
+    blockingReasons: passportEvaluation.blockingReasons,
+    requiresApprovalReasons: [...new Set([...evaluation.requiresApprovalReasons, ...passportEvaluation.approvalReasons])],
+    effectiveMaxTransactionPaise: passportEvaluation.effectiveMaximumAmountPaise,
+  };
+  if (passportEvaluation.decision === 'EXPIRED' && passport.status === 'ACTIVE' && nowIso >= passport.payload.expiresAt) {
+    const { db: passportDb } = getDb();
+    passportDb.update(schema.authorityPassports).set({ status: 'EXPIRED' }).where(eq(schema.authorityPassports.id, passport.payload.passportId)).run();
+    passport.status = 'EXPIRED';
+  }
+
   const quoteValiditySeconds = parseInt(process.env.QUOTE_VALIDITY_SECONDS || `${DEFAULT_QUOTE_VALIDITY_SECONDS}`, 10);
   const quoteExpiry = new Date(now.getTime() + quoteValiditySeconds * 1000).toISOString();
 
-  // 5. Build canonical intent payload and compute cryptographic digest
+  // 6. Build canonical intent payload and compute cryptographic digest
   const canonicalPayload: CanonicalIntentPayload = {
     category: product.category,
     currency: 'INR',
@@ -90,11 +157,15 @@ export function createProposal(
     quote_expiry: quoteExpiry,
     total_amount_paise: evaluation.totalAmountPaise,
     unit_price_paise: product.unit_price_paise,
+    passport_id: passport.payload.passportId,
+    passport_payload_digest: passport.payloadDigest,
+    agent_id: agentId,
+    payment_adapter_mode: paymentAdapterMode,
   };
 
   const canonicalRequestHash = computeCanonicalIntentHash(canonicalPayload);
 
-  // 6. Check Idempotency: (owner_id, idempotency_key, payment_adapter_mode)
+  // 7. Check Idempotency: (owner_id, idempotency_key, payment_adapter_mode)
   const existingRow = db
     .select()
     .from(schema.purchaseIntents)
@@ -112,7 +183,11 @@ export function createProposal(
     if (
       existingRow.product_id === request.product_id &&
       existingRow.quantity === request.quantity &&
-      existingRow.purchase_budget_paise === request.purchase_budget_paise
+      existingRow.purchase_budget_paise === request.purchase_budget_paise &&
+      existingRow.passport_id === passport.payload.passportId &&
+      existingRow.passport_payload_digest === passport.payloadDigest &&
+      existingRow.agent_id === agentId &&
+      existingRow.payment_adapter_mode === paymentAdapterMode
     ) {
       const existingIntent: PurchaseIntent = {
         id: existingRow.id,
@@ -138,6 +213,9 @@ export function createProposal(
         provider_payment_id: existingRow.provider_payment_id,
         model_provider: existingRow.model_provider,
         model_name: existingRow.model_name,
+        passport_id: existingRow.passport_id,
+        passport_payload_digest: existingRow.passport_payload_digest,
+        agent_id: existingRow.agent_id,
         state: existingRow.state as any,
         failure_reason: existingRow.failure_reason,
         created_at: existingRow.created_at,
@@ -146,7 +224,10 @@ export function createProposal(
 
       return {
         intent: existingIntent,
-        evaluation,
+        evaluation: effectiveEvaluation,
+        passportEvaluation,
+        passport,
+        decisionReceipt: getLatestDecisionReceipt(existingIntent.id, ownerId) || undefined,
         isExisting: true,
       };
     }
@@ -157,14 +238,17 @@ export function createProposal(
     );
   }
 
-  // 7. Determine initial state from policy evaluation
+  // 8. Determine initial state from the intersection of policy and passport.
   let initialState: IntentState = IntentStates.READY;
   let failureReason: string | null = null;
 
-  if (evaluation.state === 'BLOCKED') {
+  if (passportEvaluation.decision === 'EXPIRED') {
+    initialState = IntentStates.EXPIRED;
+    failureReason = passportEvaluation.blockingReasons.join('; ') || passportEvaluation.decision;
+  } else if (passportEvaluation.decision === 'BLOCKED' || passportEvaluation.decision === 'REVOKED') {
     initialState = IntentStates.BLOCKED;
-    failureReason = evaluation.blockingReasons.join('; ');
-  } else if (evaluation.state === 'NEEDS_APPROVAL') {
+    failureReason = passportEvaluation.blockingReasons.join('; ') || passportEvaluation.decision;
+  } else if (passportEvaluation.decision === 'NEEDS_APPROVAL') {
     initialState = IntentStates.NEEDS_APPROVAL;
   }
 
@@ -191,6 +275,9 @@ export function createProposal(
     payment_adapter_mode: paymentAdapterMode,
     model_provider: request.model_provider || null,
     model_name: request.model_name || null,
+    passport_id: passport.payload.passportId,
+    passport_payload_digest: passport.payloadDigest,
+    agent_id: agentId,
     receipt: `rcpt_${intentId.replace(/-/g, '').substring(0, 16)}`,
     provider_order_id: null,
     provider_payment_id: null,
@@ -200,29 +287,40 @@ export function createProposal(
     updated_at: nowIso,
   };
 
-  db.insert(schema.purchaseIntents).values(intentRecord).run();
-
-  // 8. Log Audit Event
-  appendAuditEvent({
-    eventType: 'INTENT_PROPOSED',
-    intentId,
-    operatorId: ownerId,
-    policyVersion: policy.version,
-    amountPaise: evaluation.totalAmountPaise,
-    stateBefore: null,
-    stateAfter: initialState,
-    payload: {
-      canonicalHash: canonicalRequestHash,
-      evaluation,
-      reason: request.reason,
-      faultInjection: request.fault_injection,
-    },
-    clock,
-  });
+  // The immutable intent, authorization audit, and signed receipt are one
+  // authorization result. A signing or persistence failure must not leave an
+  // unreceipted intent that could later be executed.
+  let decisionReceipt!: ReturnType<typeof issueDecisionReceipt>;
+  sqlite.transaction(() => {
+    db.insert(schema.purchaseIntents).values(intentRecord).run();
+    appendAuditEvent({
+      eventType: 'INTENT_PROPOSED',
+      intentId,
+      operatorId: ownerId,
+      policyVersion: policy.version,
+      amountPaise: evaluation.totalAmountPaise,
+      stateBefore: null,
+      stateAfter: initialState,
+      payload: {
+        canonicalHash: canonicalRequestHash,
+        evaluation: effectiveEvaluation,
+        passportEvaluation,
+        passportId: passport.payload.passportId,
+        passportPayloadDigest: passport.payloadDigest,
+        reason: request.reason,
+        faultInjection: request.fault_injection,
+      },
+      clock,
+    });
+    decisionReceipt = issueDecisionReceipt(intentRecord, passport, passportEvaluation, clock);
+  }).immediate();
 
   return {
     intent: intentRecord,
-    evaluation,
+    evaluation: effectiveEvaluation,
+    passportEvaluation,
+    passport,
+    decisionReceipt,
     isExisting: false,
   };
 }
@@ -260,6 +358,9 @@ export function getIntentById(intentId: string, ownerId?: string): PurchaseInten
     provider_payment_id: row.provider_payment_id,
     model_provider: row.model_provider,
     model_name: row.model_name,
+    passport_id: row.passport_id,
+    passport_payload_digest: row.passport_payload_digest,
+    agent_id: row.agent_id,
     state: row.state as any,
     failure_reason: row.failure_reason,
     created_at: row.created_at,
@@ -300,6 +401,18 @@ export function approveIntent(
   }
   if (currentPolicy.version !== intent.policy_version) {
     throw new Error('Spending policy changed after proposal; approval rejected');
+  }
+
+  if (intent.passport_id) {
+    const passport = getPassportById(intent.passport_id, operatorId, nowIso);
+    if (!passport) throw new Error('Authority passport not found; approval rejected');
+    try {
+      verifyStoredPassport(passport, operatorId, intent.agent_id || undefined, nowIso);
+    } catch {
+      throw new Error('Authority passport signature or owner binding failed; approval rejected');
+    }
+    if (passport.status === 'REVOKED') throw new Error('Authority passport has been revoked; approval rejected');
+    if (passport.status === 'EXPIRED' || nowIso >= passport.payload.expiresAt || nowIso < passport.payload.validFrom) throw new Error('Authority passport is not active; approval rejected');
   }
 
   assertValidTransition(intent.state, IntentStates.APPROVED);

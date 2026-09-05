@@ -117,7 +117,7 @@ describe('Authentication and HTTP Security Route Tests', () => {
     expect(resExpired.status).toBe(401);
   });
 
-  it('Safely ignores or rejects client-supplied approval flags in proposal requests', async () => {
+  it('rejects client-supplied approval flags and trusted-price mass assignment', async () => {
     const { db } = getDb();
     const operator = db.select().from(schema.operators).get()!;
     const session = createOperatorSession(operator.id, clock);
@@ -144,13 +144,10 @@ describe('Authentication and HTTP Security Route Tests', () => {
     });
 
     const res = await intentProposalRoute(req);
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(400);
     const data = await res.json();
-
-    // The keyboard is 279,900 paise which requires approval (>250,000 paise).
-    // Client-supplied "approved: true" MUST have been completely ignored!
-    expect(data.intent.state).toBe('NEEDS_APPROVAL');
-    expect(data.intent.unit_price_paise).toBe(279900); // trusted catalog price preserved!
+    expect(data.error).toBe('Validation Error');
+    expect(db.select().from(schema.purchaseIntents).all()).toHaveLength(0);
   });
 
   it('Returns controlled error messages without stack traces on invalid payloads', async () => {

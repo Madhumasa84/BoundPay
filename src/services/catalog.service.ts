@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { getDb, schema } from '../infrastructure/db';
-import { Product, ProductInput } from '../domain/catalog';
+import { Product, ProductInput, ProductInputSchema } from '../domain/catalog';
 import { Clock, defaultClock } from '../infrastructure/clock/clock';
 import { appendAuditEvent } from './audit.service';
 
@@ -76,6 +76,10 @@ export function updateProduct(
   clock: Clock = defaultClock
 ): Product {
   const { db } = getDb();
+  // Keep direct service callers on the same trusted integer/shape boundary as
+  // the HTTP route.  Catalog values are later used for authorization and must
+  // never admit unsafe or fractional paise through an internal call path.
+  const validatedUpdates = ProductInputSchema.partial().omit({ id: true, currency: true }).parse(updates);
   const existing = getProductById(id);
   if (!existing) {
     throw new Error(`Product with ID '${id}' not found`);
@@ -86,7 +90,7 @@ export function updateProduct(
 
   const updated: Product = {
     ...existing,
-    ...updates,
+    ...validatedUpdates,
     version: newVersion,
     updated_at: nowIso,
   };
@@ -113,7 +117,7 @@ export function updateProduct(
       productId: id,
       previousVersion: existing.version,
       newVersion,
-      changes: updates,
+      changes: validatedUpdates,
     },
     clock,
   });

@@ -29,7 +29,7 @@ Machine-readable deterministic result: 100 cases, 182 requests, 100 passed, 0 fa
 
 The existing `db-concurrency.test.ts` uses `Promise.all` around service calls within the same Node.js event loop. Because `better-sqlite3` is synchronous, no actual write-lock contention ever occurs between those "concurrent" calls — they always serialize on the single thread.
 
-**Fix:** Added `test/integration/db-concurrency-multiprocess.test.ts` (5 tests) with a separate worker script `test/integration/concurrency-worker.ts`. Each worker opens an independent `better-sqlite3` connection and waits on a `SharedArrayBuffer` barrier so all workers release their `BEGIN IMMEDIATE` transactions within the same event-loop tick. 5 rounds × 2–5 workers are exercised per scenario.
+**Fix:** Added `test/integration/db-concurrency-multiprocess.test.ts` (historical filename retained) with a separate worker script `test/integration/concurrency-worker.ts`. Each worker opens an independent `better-sqlite3` connection and waits on a `SharedArrayBuffer` barrier so all workers release their `BEGIN IMMEDIATE` transactions within the same event-loop tick. This is worker-thread contention, not OS cross-process coordination. 5 rounds × 2–5 workers are exercised per scenario. Phase 4 adds an Authority Passport-specific contention suite covering usage, budget, revocation, expiry, and policy/catalog races.
 
 | Scenario | Rounds × Workers | Result |
 |---|---|---|
@@ -112,5 +112,4 @@ Suggested answers: server-owned attributes and integer predicates decide authori
 ## Readiness assessment
 
 The repository is verified for local deterministic review, live Sarvam-105b structured model evaluation, and an actual completed Razorpay TEST transaction. Actual provider webhook delivery and deployed HTTPS hosting remain pending an authorized public environment.
-
 

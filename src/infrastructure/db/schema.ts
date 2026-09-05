@@ -54,6 +54,32 @@ export const policies = sqliteTable('policies', {
   created_at: text('created_at').notNull(),
 });
 
+/** Immutable signed authority mandates. Status/revoked_at are the only mutable fields. */
+export const authorityPassports = sqliteTable('authority_passports', {
+  id: text('id').primaryKey(),
+  owner_id: text('owner_id').notNull().references(() => operators.id),
+  agent_id: text('agent_id').notNull(),
+  issuer: text('issuer').notNull(),
+  audience: text('audience').notNull(),
+  policy_version: integer('policy_version').notNull(),
+  payload_json: text('payload_json').notNull(),
+  payload_digest: text('payload_digest').notNull(),
+  signed_token: text('signed_token').notNull(),
+  key_id: text('key_id').notNull(),
+  status: text('status').notNull().default('ACTIVE'),
+  valid_from: text('valid_from').notNull(),
+  expires_at: text('expires_at').notNull(),
+  revocation_nonce: text('revocation_nonce').notNull().unique(),
+  revoked_at: text('revoked_at'),
+  idempotency_key: text('idempotency_key'),
+  created_at: text('created_at').notNull(),
+}, (table) => ({
+  ownerIdx: index('idx_passports_owner').on(table.owner_id),
+  statusIdx: index('idx_passports_status').on(table.status),
+  agentIdx: index('idx_passports_agent').on(table.agent_id),
+  idempotencyIdx: uniqueIndex('idx_passports_idempotency').on(table.owner_id, table.idempotency_key),
+}));
+
 export const purchaseIntents = sqliteTable('purchase_intents', {
   id: text('id').primaryKey(),
   owner_id: text('owner_id').notNull().references(() => operators.id),
@@ -75,6 +101,9 @@ export const purchaseIntents = sqliteTable('purchase_intents', {
   payment_adapter_mode: text('payment_adapter_mode').notNull(), // 'MOCK' | 'RAZORPAY_TEST'
   model_provider: text('model_provider'),
   model_name: text('model_name'),
+  passport_id: text('passport_id').references(() => authorityPassports.id),
+  passport_payload_digest: text('passport_payload_digest'),
+  agent_id: text('agent_id'),
   receipt: text('receipt'),
   provider_order_id: text('provider_order_id'),
   provider_payment_id: text('provider_payment_id'),
@@ -120,6 +149,43 @@ export const spendLedger = sqliteTable('spend_ledger', {
   oneLedgerPerIntentIdx: uniqueIndex('idx_ledger_one_per_intent').on(table.intent_id),
   statusIdx: index('idx_ledger_status').on(table.status),
   confirmTimeIdx: index('idx_ledger_confirm_time').on(table.confirmation_timestamp),
+}));
+
+/** One durable usage row per passport and intent. RELEASED is only for definite provider rejection. */
+export const passportUsages = sqliteTable('passport_usages', {
+  id: text('id').primaryKey(),
+  passport_id: text('passport_id').notNull().references(() => authorityPassports.id),
+  intent_id: text('intent_id').notNull().references(() => purchaseIntents.id),
+  amount_paise: integer('amount_paise').notNull(),
+  payment_adapter_mode: text('payment_adapter_mode').notNull(),
+  usage_status: text('usage_status').notNull(),
+  reservation_timestamp: text('reservation_timestamp').notNull(),
+  released_or_committed_timestamp: text('released_or_committed_timestamp'),
+  created_at: text('created_at').notNull(),
+}, (table) => ({
+  passportIdx: index('idx_passport_usage_passport').on(table.passport_id),
+  intentIdx: index('idx_passport_usage_intent').on(table.intent_id),
+  statusIdx: index('idx_passport_usage_status').on(table.usage_status),
+  onePerIntentIdx: uniqueIndex('idx_passport_usage_one_per_intent').on(table.passport_id, table.intent_id),
+}));
+
+/** Immutable signed deterministic authorization receipts. */
+export const decisionReceipts = sqliteTable('decision_receipts', {
+  id: text('id').primaryKey(),
+  intent_id: text('intent_id').notNull().references(() => purchaseIntents.id),
+  receipt_schema_version: integer('receipt_schema_version').notNull(),
+  decision: text('decision').notNull(),
+  request_hash: text('request_hash').notNull(),
+  passport_id: text('passport_id').notNull(),
+  passport_payload_digest: text('passport_payload_digest').notNull(),
+  payload_json: text('payload_json').notNull(),
+  signed_token: text('signed_token').notNull(),
+  key_id: text('key_id').notNull(),
+  issued_at: text('issued_at').notNull(),
+}, (table) => ({
+  intentIdx: index('idx_decision_receipts_intent').on(table.intent_id),
+  decisionIdx: index('idx_decision_receipts_decision').on(table.decision),
+  requestIdx: index('idx_decision_receipts_request').on(table.request_hash),
 }));
 
 export const auditEvents = sqliteTable('audit_events', {

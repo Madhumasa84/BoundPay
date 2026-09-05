@@ -2,6 +2,8 @@
   "schema_version": 1,
   "fixed_seeds": [42, 424242, 20260903],
   "minimum_runs_per_phase3_property_per_seed": 200,
+  "phase4_authority_seeds": [4101, 4102, 1278130507],
+  "phase4_runs_per_critical_property_per_seed": 500,
   "properties": [
     "terminal confirmed states do not regress",
     "approval digest changes when an authorization-relevant field changes",

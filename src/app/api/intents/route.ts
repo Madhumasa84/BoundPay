@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import { getDb, schema } from '@/infrastructure/db';
 import { CreateProposalRequestSchema, resolvePaymentAdapterMode } from '@/domain/intent';
 import { createProposal } from '@/services/purchase.service';
-import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, readJsonBody, requireAuth } from '@/app/api/api-helpers';
 
 export const runtime = 'nodejs';
 
@@ -11,10 +11,13 @@ export async function POST(req: Request) {
   if ('status' in auth) return auth;
 
   try {
-    const rawBody = await req.json();
+    const rawBody = await readJsonBody(req);
     
     // Explicit security rule: reject or ignore client-supplied approval flags, prices, merchants
     const validatedRequest = CreateProposalRequestSchema.parse(rawBody);
+    if (!validatedRequest.passport_id) {
+      return jsonResponse({ error: 'Validation Error', message: 'An explicit Authority Passport is required' }, 400);
+    }
 
     const paymentAdapterMode = resolvePaymentAdapterMode();
     const result = createProposal(

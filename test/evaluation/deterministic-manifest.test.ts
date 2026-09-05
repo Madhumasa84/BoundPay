@@ -50,7 +50,12 @@ describe('100-case deterministic manifest through real services and SQLite', () 
       unresolved_outcomes: 0,
       results: caseResults,
     };
-    fs.writeFileSync(path.resolve(process.cwd(), 'evaluation/deterministic-results.json'), `${JSON.stringify(output, null, 2)}\n`);
+    // The committed deterministic result is historical machine-readable
+    // evidence.  A normal test run must not silently replace it (especially
+    // after a partial failure).  Regeneration is an explicit evaluation step.
+    if (process.env.WRITE_EVALUATION_EVIDENCE === 'true') {
+      fs.writeFileSync(path.resolve(process.cwd(), 'evaluation/deterministic-results.json'), `${JSON.stringify(output, null, 2)}\n`);
+    }
     closeDefaultDb();
     for (const dbPath of createdPaths) for (const suffix of ['', '-wal', '-shm']) {
       try { fs.unlinkSync(`${dbPath}${suffix}`); } catch {}

@@ -11,13 +11,15 @@ Untrusted: the shopping model, browser, request JSON, catalog descriptions, disp
 - Client/model price, merchant, currency, approval, and policy forgery is excluded from accepted proposal fields and replaced with server truth.
 - Budget, category, merchant, subscription, expiry, and approval-threshold violations are deterministically blocked.
 - Approval reuse after price, product, policy, quantity, budget, or quote change fails exact binding/version checks.
-- Serialized reservation prevents concurrent commitments exceeding a mode-specific daily budget, tested both within a single Node.js process (Promise.all races) and across independent worker_threads with SharedArrayBuffer barriers (cross-connection contention against the same SQLite file).
+- Serialized reservation prevents concurrent commitments exceeding a mode-specific daily budget, tested both within a single Node.js process (Promise.all races) and with worker-thread contention using independent SQLite connections and SharedArrayBuffer barriers against the same SQLite file.
 - Intent idempotency, state claims, and the unique ledger constraint prevent tested duplicate reservation/order paths.
 - Callback and webhook signatures use HMAC verification; captured payment is checked against order, amount, and INR currency.
 - Replayed webhook event IDs are deduplicated and early unmatched events are retained.
 - Ambiguous provider outcomes retain authority and require reconciliation, avoiding blind order retry.
 - Catalog prompt injection has no direct financial authority. A forced subscription proposal is blocked by the normal gate.
 - Authentication, ownership, session expiry, logout, and same-origin browser writes are tested.
+- Passport threats are covered by owner/agent binding, immutable payload digests, EdDSA/JWS verification, issuer/audience/`kid` checks, explicit validity windows, durable revocation, fail-closed allowlists, and sanitized proof/receipt endpoints. Horizontal IDOR and forged owner/agent/passport identifiers are denied.
+- Decision receipts are integrity evidence only. They do not authorize execution, prove a complete database, prove an uncompromised signing host, or prove bank/provider settlement.
 
 ## Residual risks and assumptions
 

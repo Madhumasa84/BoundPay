@@ -8,6 +8,7 @@ out/
 
 # Build artifacts
 dist/
+*.tsbuildinfo
 
 # SQLite databases
 *.sqlite
@@ -32,6 +33,7 @@ playwright-report/
 # OS and IDE files
 .DS_Store
 *.pem
+.authority/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

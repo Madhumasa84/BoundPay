@@ -70,7 +70,7 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
 
     // Verify state is POLICY BLOCKED
     await expect(page.locator('text=POLICY BLOCKED')).toBeVisible();
-    await expect(page.locator('text=Subscriptions are strictly prohibited by standing policy')).toBeVisible();
+    await expect(page.locator('text=Subscriptions are strictly prohibited by standing policy').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Execute with labeled mock provider' })).not.toBeVisible();
   });
 
@@ -118,7 +118,7 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
     // Verify failure explanation is visible
     await expect(page.locator('text=POLICY BLOCKED')).toBeVisible();
     await expect(page.locator('text=Purchase Proposal Blocked')).toBeVisible();
-    await expect(page.locator('text=MAX_TRANSACTION_LIMIT')).toBeVisible();
+    await expect(page.locator('text=MAX_TRANSACTION_LIMIT').first()).toBeVisible();
   });
 
   test('Scenario 8: Page reload preserves operator authentication session', async ({ page }) => {
@@ -181,5 +181,118 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
     await page.waitForURL('/login');
     await page.goto('/policy');
     await page.waitForURL('/login');
+  });
+
+  test('Scenario 15: create/select passport, inspect every debugger stage, verify receipt, and preserve it on reload', async ({ page }) => {
+    const externalProviderRequests: string[] = [];
+    page.on('request', (request) => {
+      if (/sarvam|razorpay/i.test(request.url())) externalProviderRequests.push(request.url());
+    });
+    await page.goto('/passports');
+    await page.getByRole('button', { name: 'Create passport' }).click();
+    await page.getByLabel('Agent ID').fill('browserbot');
+    await page.getByLabel('Agent display name').fill('Browser Bot');
+    await page.getByLabel('Allowed merchant IDs').fill('demo_store');
+    await page.getByLabel('Allowed categories').fill('electronics, books');
+    await page.getByLabel('Max / transaction (₹)').fill('4000');
+    await page.getByLabel('Cumulative budget (₹)').fill('10000');
+    await page.getByLabel('Approval above (₹)').fill('3000');
+    await page.getByLabel('Maximum usages').fill('4');
+    await page.getByRole('button', { name: 'Issue signed passport' }).click();
+    await expect(page.getByText(/Signed passport issued for Browser Bot/)).toBeVisible();
+    await expect(page.getByText('browserbot', { exact: false }).first()).toBeVisible();
+    await expect(page.getByText('Ed25519 / EdDSA payload')).toBeVisible();
+
+    await page.goto('/shop');
+    const browserPassportOption = page.locator('#authority-passport option').filter({ hasText: 'Browser Bot' }).first();
+    await page.getByLabel('Authority Passport').selectOption((await browserPassportOption.getAttribute('value')) || '');
+    await page.getByRole('button', { name: /2\. Wireless Mouse x1/ }).click();
+    await page.getByRole('button', { name: 'Submit Proposal to Policy Engine' }).click();
+    await expect(page.getByRole('heading', { name: 'Visual Authorization Debugger' })).toBeVisible();
+    await expect(page.getByText('PASSPORT_SIGNATURE_VALID')).toBeVisible();
+    await expect(page.getByText('PASSPORT_ACTIVE')).toBeVisible();
+    await expect(page.getByText('PASSPORT_OWNER_MATCH')).toBeVisible();
+    await expect(page.getByText('PASSPORT_AGENT_MATCH')).toBeVisible();
+    await expect(page.getByText('MERCHANT_INTERSECTION_ALLOWED')).toBeVisible();
+    await expect(page.getByText('CATEGORY_INTERSECTION_ALLOWED')).toBeVisible();
+    await expect(page.getByText('SUBSCRIPTION_POLICY_ALLOWED')).toBeVisible();
+    await expect(page.getByText('TRANSACTION_LIMIT_INTERSECTION_ALLOWED')).toBeVisible();
+    await expect(page.getByText('PASSPORT_CUMULATIVE_BUDGET_AVAILABLE')).toBeVisible();
+    await expect(page.getByText('PASSPORT_USAGE_AVAILABLE')).toBeVisible();
+    await expect(page.getByText('SERVER_BUDGET_AVAILABLE')).toBeVisible();
+    await expect(page.getByText('APPROVAL_NOT_REQUIRED')).toBeVisible();
+    await expect(page.getByText('QUOTE_AND_POLICY_VERSIONS_CURRENT')).toBeVisible();
+    await expect(page.getByText('EXECUTION_PERMITTED')).toBeVisible();
+    await page.getByRole('button', { name: 'Verify receipt signature' }).click();
+    await expect(page.getByText('SIGNATURE VERIFIED')).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Persisted signed authorization receipt' })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByLabel('Authority Passport')).toBeVisible();
+    await page.getByRole('button', { name: 'Evaluate purchase' }).focus();
+    await expect(page.getByRole('button', { name: 'Evaluate purchase' })).toBeFocused();
+    expect(externalProviderRequests).toEqual([]);
+  });
+
+  test('Scenario 16: disallowed category, revocation-before-execution, and expiry fail closed', async ({ page }) => {
+    const createPassport = async (agentId: string, agentDisplayName: string, allowedCategories: string[], expiresAt: string) => {
+      const response = await page.evaluate(async (body) => {
+        const raw = await fetch('/api/passports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        return { status: raw.status, ok: raw.ok, data: await raw.json() };
+      }, {
+        agentId, agentDisplayName, allowedMerchantIds: ['demo_store'], allowedCategories,
+        maximumAmountPerTransactionPaise: 400000, cumulativeBudgetPaise: 1000000,
+        approvalRequiredAbovePaise: 300000, maximumUsageCount: 4, expiresAt,
+        idempotencyKey: `e2e-${agentId}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      });
+      expect(response.ok).toBeTruthy();
+      return response.data.passport;
+    };
+
+    const categoryPassport = await createPassport('books-only', 'Books Only', ['books'], new Date(Date.now() + 3600000).toISOString());
+    await page.goto('/shop');
+    await page.getByLabel('Authority Passport').selectOption(categoryPassport.passportId);
+    await page.getByRole('button', { name: /2\. Wireless Mouse x1/ }).click();
+    await page.getByRole('button', { name: 'Submit Proposal to Policy Engine' }).click();
+    await expect(page.getByText('POLICY BLOCKED')).toBeVisible();
+    await expect(page.getByText('CATEGORY_INTERSECTION_DENIED')).toBeVisible();
+    await expect(page.getByText(/What would make it allowable/)).toBeVisible();
+
+    const revokePassport = await createPassport('revoke-bot', 'Revoke Bot', ['electronics', 'books'], new Date(Date.now() + 3600000).toISOString());
+    await page.goto('/shop');
+    await page.getByLabel('Authority Passport').selectOption(revokePassport.passportId);
+    await page.getByRole('button', { name: /3\. Systems Engineering Book x1/ }).click();
+    await page.getByRole('button', { name: 'Submit Proposal to Policy Engine' }).click();
+    await expect(page.getByText('READY FOR CHECKOUT')).toBeVisible();
+    const revokeResponse = await page.evaluate(async (passportId) => {
+      const raw = await fetch(`/api/passports/${passportId}/revoke`, { method: 'POST' });
+      return { status: raw.status, ok: raw.ok };
+    }, revokePassport.passportId);
+    expect(revokeResponse.ok).toBeTruthy();
+    await page.getByRole('button', { name: 'Execute with labeled mock provider' }).click();
+    await expect(page.getByText('Purchase Proposal Blocked')).toBeVisible();
+    await expect(page.getByText(/revoked|Authority passport changed/i).first()).toBeVisible();
+
+    const expiringPassport = await createPassport('expiring-bot', 'Expiring Bot', ['electronics', 'books'], new Date(Date.now() + 5000).toISOString());
+    await page.goto('/shop');
+    await page.getByLabel('Authority Passport').selectOption(expiringPassport.passportId);
+    await page.getByRole('button', { name: /3\. Systems Engineering Book x1/ }).click();
+    await page.getByRole('button', { name: 'Submit Proposal to Policy Engine' }).click();
+    await expect(page.getByText('READY FOR CHECKOUT')).toBeVisible();
+    await page.waitForTimeout(6000);
+    await page.getByRole('button', { name: 'Execute with labeled mock provider' }).click();
+    await expect(page.getByText(/EXPIRED|Authorization expired or invalidated|Purchase Proposal Blocked/).first()).toBeVisible();
+  });
+
+  test('Scenario 17: passport endpoint ownership protection and logout remain enforced', async ({ page }) => {
+    const response = await page.evaluate(async () => {
+      const raw = await fetch('/api/passports/pass_nonexistent');
+      return raw.status;
+    });
+    expect(response).toBe(404);
+    await page.getByRole('button', { name: 'Logout' }).click();
+    await page.waitForURL('/login');
+    const unauthenticated = await page.evaluate(async () => (await fetch('/api/passports')).status);
+    expect(unauthenticated).toBe(401);
   });
 });
