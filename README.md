@@ -87,9 +87,22 @@ untrusted browser / catalog text / model
 
 See [Architecture](docs/ARCHITECTURE.md), [Authority Passports](docs/AUTHORITY_PASSPORTS.md), [Passport Threat Model](docs/AUTHORITY_PASSPORT_THREAT_MODEL.md), [Threat Model](docs/THREAT_MODEL.md), [Evaluation](docs/EVALUATION.md), [Phase 4 Report](docs/PHASE_4_REPORT.md), [Razorpay Test Verification](docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md), and [Final Security Verification](docs/FINAL_SECURITY_VERIFICATION.md).
 
-## Setup
+## Requirements & Prerequisites
 
-Requirements: Node.js 20+, pnpm 10+, and persistent local storage for SQLite.
+Also documented in [requirements.txt](requirements.txt) and [package.json](package.json).
+
+| Component | Requirement | Tested Version | Notes |
+| :--- | :--- | :--- | :--- |
+| **Node.js** | `>= 20.0.0` (LTS) | `v20.20.2` | Core JavaScript runtime |
+| **Package Manager** | `pnpm >= 10.0.0` | `10.33.0` | Dependency resolution via `pnpm-lock.yaml` |
+| **Database** | SQLite 3 with WAL support | `better-sqlite3 11.8.1` | Local persistent file storage (`DATABASE_PATH`) |
+| **Operating System** | Linux, macOS, or Windows (WSL2) | Ubuntu Linux x64 | Requires POSIX-compliant filesystem for SQLite locks |
+| **Browser Engine** | Chromium | Installed via Playwright | Required for running `pnpm run test:e2e` |
+| **Cryptography** | Node `crypto` + `jose 6.2` | Built-in / `jose 6.2.11` | Ed25519 / EdDSA Authority Passport signatures |
+| **Live Model (Optional)** | `SARVAM_API_KEY` | `sarvam-105b` | Required only when `AGENT_MODE=live` (offline fixtures require no key) |
+| **Payment Gateway (Optional)** | `RAZORPAY_KEY_ID`, `_SECRET` | TEST mode (`rzp_test_*`) | Required only when `PAYMENT_ADAPTER_MODE=RAZORPAY_TEST` |
+
+## Setup
 
 ```bash
 cp .env.example .env

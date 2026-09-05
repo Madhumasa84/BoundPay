@@ -1,0 +1,51 @@
+# BoundPay - System, Runtime, and Package Requirements
+# Project Type: Next.js 15 / TypeScript / SQLite Full-Stack Application
+# Package Manager: pnpm >= 10.0.0 (uses package.json & pnpm-lock.yaml)
+
+# --- Runtime & System Requirements ---
+# Node.js: >= 20.0.0 (Tested on Node.js v20.20.2 LTS, Linux x64)
+# Package Manager: pnpm >= 10.0.0
+# Database: SQLite 3 with Write-Ahead Logging (WAL) support (via better-sqlite3)
+# Operating System: Linux (recommended), macOS, or Windows with WSL2
+# Browser Engine: Chromium (required for Playwright E2E test suite)
+
+# --- Core Production Dependencies (package.json) ---
+# Framework & UI
+next==15.5.21
+react==18.3.1
+react-dom==18.3.1
+tailwindcss==3.4.14
+lucide-react==1.39.0
+clsx==2.1.1
+tailwind-merge==3.6.0
+
+# Database & Persistence
+better-sqlite3==11.8.1
+drizzle-orm==0.45.2
+
+# Cryptography & Security
+jose==6.2.11          # Ed25519 / EdDSA compact JWS authority passport signing & verification
+bcryptjs==3.0.3       # Operator password hashing
+zod==4.5.4            # Strict schema validation for catalog, policy, and API boundaries
+
+# External Integrations
+openai==7.9.0         # Sarvam AI API client (using OpenAI-compatible /v1/chat/completions)
+razorpay==2.9.8       # Razorpay Node SDK (Standard Checkout order creation & verification)
+
+# --- Development & Testing Dependencies ---
+typescript==5.9.3
+tsx==4.23.13
+vitest==4.1.11        # Unit, integration, property, and concurrency test runner
+@playwright/test==1.62.1 # End-to-end browser automation suite
+fast-check==4.9.0     # Property-based invariant testing
+eslint==8.57.1
+eslint-config-next==14.2.24
+drizzle-kit==0.31.10
+postcss==8.5.26
+autoprefixer==10.5.4
+
+# --- Installation Instructions ---
+# 1. Ensure Node.js 20+ and pnpm 10+ are installed:
+#    node -v && pnpm -v
+# 2. Install frozen lockfile dependencies:
+#    pnpm install --frozen-lockfile
