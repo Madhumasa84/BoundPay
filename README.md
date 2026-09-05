@@ -4,6 +4,72 @@ BoundPay demonstrates bounded financial authority for agentic commerce. A model 
 
 This repository is a buildathon evaluation build, not a production payment product. Its scope is one operator, one approved merchant, INR integer-paise accounting, one application instance, Sarvam AI (sarvam-105b) proposal selection, and Razorpay Standard Checkout in TEST mode.
 
+## Architecture & Trust Boundaries
+
+```mermaid
+flowchart TD
+    subgraph Untrusted["UNTRUSTED BOUNDARY"]
+        Agent["AI Shopping Agent<br/>(Sarvam-105b / Natural Language)"]
+        Browser["User Browser Client<br/>(Shop / Passports / Policy UI)"]
+    end
+
+    subgraph Proposal["PROPOSAL INTAKE (No Authority)"]
+        Agent -->|Catalog item + quantity proposal| Intake["Purchase Intake API<br/>/api/agent/propose"]
+        Browser -->|Manual proposal / Scenario trigger| Intake
+        Intake --> CatalogLookup["Server-Controlled Catalog<br/>(Forces canonical price & version)"]
+    end
+
+    subgraph DeterministicCore["DETERMINISTIC BOUNDED AUTHORITY CORE"]
+        CatalogLookup --> PolicyGate["Deterministic Policy Engine<br/>• Transaction limit & Daily budget<br/>• Approved merchant & Allowed categories<br/>• Subscription block & Expiry"]
+        PolicyGate --> DecisionCheck{"Policy Check"}
+        
+        DecisionCheck -->|Blocked| BlockedReceipt["Signed Decision Receipt<br/>[BLOCKED] (JWS / Ed25519)"]
+        DecisionCheck -->|Exceeds Threshold| ApprovalGate["Exact Human Approval Gate<br/>(SHA-256 Digest Binding)"]
+        DecisionCheck -->|Auto-allowed| PassportGate
+        
+        ApprovalGate -->|Operator Rejection| RejectedReceipt["Signed Decision Receipt<br/>[DECLINED]"]
+        ApprovalGate -->|Operator Signs Digest| PassportGate["Authority Passport Intersect<br/>• Ed25519 / EdDSA Signature<br/>• Agent ID & Owner Binding<br/>• Passport Budget & Max Usage<br/>• Revocation Nonce Check"]
+        
+        PassportGate -->|Revoked / Expired| PassportBlocked["Signed Decision Receipt<br/>[REVOKED / EXPIRED]"]
+        PassportGate -->|Valid Intersect| ExecClaim["SQLite Atomic Claim<br/>BEGIN IMMEDIATE<br/>• Revalidate Product Version<br/>• Revalidate Policy Version<br/>• Atomic Spend & Passport Reservation"]
+    end
+
+    subgraph ProviderBoundary["ISOLATED PROVIDER DISPATCH"]
+        ExecClaim --> ProviderRouter{"Payment Mode"}
+        ProviderRouter -->|MOCK| MockProvider["Mock Payment Adapter<br/>(Labeled Synthetic Simulation)"]
+        ProviderRouter -->|RAZORPAY_TEST| RazorpayProvider["Razorpay Test Adapter<br/>(Standard Checkout + Order API)"]
+    end
+
+    subgraph Settlement["VERIFICATION & PERSISTENCE"]
+        MockProvider --> Ledger["Spend Ledger (CONFIRMED)<br/>+ Immutable Audit Log"]
+        RazorpayProvider --> WebhookVerify["Timing-Safe HMAC Verification<br/>(Callback / Webhook / Reconcile)"]
+        WebhookVerify --> Ledger
+    end
+```
+
+```text
+untrusted browser / catalog text / model
+             │ proposal only
+             ▼
+ server catalog resolution → deterministic policy gate → exact human approval
+             │                         │
+             │                     blocked: no provider call
+             ▼
+ passport signature + effective-policy intersection
+             │ signed decision receipt (proof, not capability)
+             ▼
+ SQLite BEGIN IMMEDIATE: revalidate versions + reserve daily budget + passport usage
+             │ committed reservation
+             ▼
+ payment adapter boundary ── MOCK or Razorpay TEST order
+             │
+             ▼
+ signed callback / signed webhook / provider status verification
+             │ captured, matching amount/currency/order
+             ▼
+ confirmed ledger + persistent application audit
+```
+
 ## What is implemented
 
 
