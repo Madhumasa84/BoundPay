@@ -9,16 +9,17 @@ This repository is a buildathon evaluation build, not a production payment produ
 
 - Server-owned, versioned catalog and spending policy.
 - Explicit per-purchase budget and deterministic transaction, category, merchant, subscription, expiry, and daily-budget checks.
+- Stale catalog regression guard: durably invalidates proposals if the catalog price or attributes advance before checkout, transitioning to `EXPIRED` and preserving financial isolation.
 - Human approval bound to the SHA-256 digest of exact product, quantity, price, budget, policy/catalog versions, owner, merchant, and quote expiry.
 - Atomic SQLite `BEGIN IMMEDIATE` reservation before provider dispatch; one ledger row per intent.
 - Idempotent intent/order behavior, durable `UNKNOWN` outcomes, receipt/status reconciliation, signed callback and webhook verification, webhook replay handling, and append-only application audit export.
 - Clearly separated `FIXTURE`/`LIVE_MODEL` proposal modes and `MOCK`/`RAZORPAY_TEST` payment modes.
 - Authenticated scenario controls that modify normal inputs or inject mock faults at adapter boundaries; they never set a final decision.
-- Responsive Shop, Policy, and Activity views with visible modes, amounts, exact approval data, recovery messages, and JSON audit export.
-- Versioned Authority Passports: immutable EdDSA-signed, owner/agent-bound mandates with durable revocation, explicit merchant/category/amount/budget/usage constraints, and an atomic passport-usage ledger.
+- Clean, modern enterprise UI across all views (`/shop`, `/login`, `/policy`, `/activity`, `/passports`) featuring refined typography, dark glassmorphism navigation, responsive mobile layouts, and a visual authorization debugger.
+- Versioned Authority Passports: immutable Ed25519/EdDSA-signed, owner/agent-bound mandates with durable revocation, explicit merchant/category/amount/budget/usage constraints, and an atomic passport-usage ledger.
 - Signed authorization decision receipts for every deterministic outcome, offline verification/proof bundles, and a keyboard-operable visual authorization debugger.
 
-See [Architecture](docs/ARCHITECTURE.md), [Authority Passports](docs/AUTHORITY_PASSPORTS.md), [Threat model](docs/THREAT_MODEL.md), [Evaluation](docs/EVALUATION.md), and [Phase 4 report](docs/PHASE_4_REPORT.md).
+See [Architecture](docs/ARCHITECTURE.md), [Authority Passports](docs/AUTHORITY_PASSPORTS.md), [Passport Threat Model](docs/AUTHORITY_PASSPORT_THREAT_MODEL.md), [Threat Model](docs/THREAT_MODEL.md), [Evaluation](docs/EVALUATION.md), [Phase 4 Report](docs/PHASE_4_REPORT.md), [Razorpay Test Verification](docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md), and [Final Security Verification](docs/FINAL_SECURITY_VERIFICATION.md).
 
 ## Setup
 
@@ -70,11 +71,20 @@ pnpm run build
 pnpm run eval:latency
 pnpm audit --prod
 pnpm run authority:validate
+pnpm run security:public-artifacts
 ```
 
-Phase 3 recorded 268/268 Vitest tests across 17 files and 15/15 Chromium Playwright tests. Phase 4 adds Authority Passport domain/crypto/security/property/migration tests and worker-thread contention using independent SQLite connections. All Phase 4 browser/integration automation runs with `AGENT_MODE=fixture` and `PAYMENT_ADAPTER_MODE=MOCK`; no Sarvam or Razorpay HTTP call is allowed. The 100-case deterministic manifest remains a separate historical artifact and is not overwritten.
+Final verification status (release tag `boundpay-buildathon-final`):
+- **Vitest**: **338/338 tests passed** across 29 files, covering Authority Passports, Ed25519/EdDSA crypto, deterministic policy evaluation, worker-process SQLite concurrency/locking, schema migrations, and stale historical-catalog regression guards.
+- **Playwright E2E**: **18/18 Chromium tests passed** across all user scenarios, unauthenticated route protection, operator login, human approval flows, Visual Authorization Debugger inspection, receipt verification, and passport lifecycle.
+- **TypeScript**: `tsc --noEmit` passed with 0 errors.
+- **ESLint**: `next lint` passed with 0 warnings and 0 errors.
+- **Public Secret Exposure**: `pnpm run security:public-artifacts` scanned 94 static/server client-facing build artifacts and confirmed 0 private keys, secrets, or tokens exposed.
+- **Fresh Clone Verification**: Documented setup (`cp .env.example .env`, `pnpm install`, `pnpm run db:migrate`, `pnpm run db:seed`, `pnpm run build`) verified clean from an isolated clone.
 
-Live model evaluation (Sarvam AI sarvam-105b): 20/20 executed, 0 skipped. Strict JSON Schema output verified with Zod business validation. 19/20 requests satisfied, 2 proposed policy violations (subscriptions) both strictly blocked by the deterministic policy gate, 0 unexpected payment provider order calls, median latency 6929 ms. Real Razorpay TEST transactions: 1 completed and verified with test credentials (order_TXcjbyB4QUPgxL, payment pay_TXcmIeKNdSAV4M, ₹2,799 captured, 1 confirmed ledger row, timing-safe HMAC signature verified, authoritative provider lookup confirmed). See [docs/RAZORPAY_TEST_VERIFICATION.md](docs/RAZORPAY_TEST_VERIFICATION.md). Razorpay Test Dashboard record is available for operator confirmation; actual provider webhook delivery remains pending an authorized public HTTPS domain.
+Live model evaluation (Sarvam AI sarvam-105b): 20/20 executed, 0 skipped. Strict JSON Schema output verified with Zod business validation. 19/20 requests satisfied, 2 proposed policy violations (subscriptions) both strictly blocked by the deterministic policy gate, 0 unexpected payment provider order calls, median latency 6929 ms.
+
+Real Razorpay TEST verification: Phase 4 completed full end-to-end verification with test credentials (live Sarvam proposal, exact human approval, order `order_TYFC3NA5M8g7qI`, payment `pay_TYFqxNNBrbJRas`, ₹2,799 captured, 1 confirmed ledger row, timing-safe HMAC signature verified, authoritative provider lookup confirmed). Razorpay Test Dashboard record confirmed by operator. See [docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md](docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md) and [docs/FINAL_SECURITY_VERIFICATION.md](docs/FINAL_SECURITY_VERIFICATION.md).
 
 ## Deployment preparation
 
