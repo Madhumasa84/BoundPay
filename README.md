@@ -176,7 +176,3 @@ Decision receipts are signed EdDSA compact JWS statements, not payment receipts 
 - The live-model set is small and currently unexecuted; it cannot establish general prompt-injection immunity.
 - Browser automation does not complete third-party Razorpay Checkout.
 - Authority signing is intentionally single-authority and single-operator in this phase; key rotation is verification-key (`kid`) support, not a multi-organization trust system.
-
-## AI coding-tool disclosure
-
-Codex was used to inspect, implement, test, and draft Phase 3 artifacts. Human review is still required for credentials, actual provider/dashboard evidence, live-model result interpretation, deployment configuration, and final claim wording. Generated claims were checked against command output and machine-readable artifacts rather than treated as evidence by themselves.
