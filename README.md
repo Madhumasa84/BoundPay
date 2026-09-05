@@ -47,28 +47,18 @@ flowchart TD
     end
 ```
 
-```text
-untrusted browser / catalog text / model
-             │ proposal only
-             ▼
- server catalog resolution → deterministic policy gate → exact human approval
-             │                         │
-             │                     blocked: no provider call
-             ▼
- passport signature + effective-policy intersection
-             │ signed decision receipt (proof, not capability)
-             ▼
- SQLite BEGIN IMMEDIATE: revalidate versions + reserve daily budget + passport usage
-             │ committed reservation
-             ▼
- payment adapter boundary ── MOCK or Razorpay TEST order
-             │
-             ▼
- signed callback / signed webhook / provider status verification
-             │ captured, matching amount/currency/order
-             ▼
- confirmed ledger + persistent application audit
-```
+### Authorization & Execution Lifecycle
+
+| Step | Stage | Authority Rule & Invariant | Output State |
+| :---: | :--- | :--- | :--- |
+| **1** | **Proposal Intake** | Model or user proposes product & quantity. Server strictly resolves canonical price & version from server catalog. | Proposal Created (`READY` / `NEEDS_APPROVAL`) |
+| **2** | **Policy Gate** | Evaluates integer-paise caps, daily budget, merchant allowlist, category, and subscription ban. | Auto-Allowed or Blocked (`BLOCKED`) |
+| **3** | **Human Approval** | Required if amount exceeds approval threshold. Bound cryptographically to SHA-256 digest of exact proposal. | Approved Intent (`APPROVED`) |
+| **4** | **Passport Gate** | Intersects policy with Ed25519 Authority Passport. Enforces agent bounds, quota, budget, and revocation nonce. | Validated Authority Mandate |
+| **5** | **Atomic Claim** | SQLite `BEGIN IMMEDIATE` revalidates catalog & policy versions; locks daily budget and passport allowance atomically. | Intent Claimed (`EXECUTING`) |
+| **6** | **Provider Dispatch** | Isolated route to either MOCK adapter or Razorpay TEST gateway (`createOrder`). | Order Created (`ORDER_CREATED`) |
+| **7** | **Settlement & Audit** | Timing-safe HMAC callback/webhook verification. Appends to immutable audit trail. | Confirmed Ledger (`PAYMENT_CONFIRMED`) |
+
 
 ## What is implemented
 
