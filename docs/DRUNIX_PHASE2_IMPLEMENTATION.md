@@ -253,7 +253,8 @@ Latest results for this branch:
 | `pnpm run test:e2e` | Pass, 18/18 Chromium tests on the final source state; the reconciliation assertion requires an explicit UNKNOWN/held/no-retry message. |
 | `PATH=/tmp/boundpay-drunix-upgrade/scripts/drunix-toolchain:$PATH go test -mod=readonly ./...` from `contracts/shared-authority/chaincode` in the pinned Go 1.23.0 container | Pass after final contract code; `go fmt ./...` also passed. |
 | `pnpm run security:public-artifacts` | Clean-checkout scan passed across 104 public artifacts; configured authority private key and four configured secret checks were `NOT_FOUND`. This checks named configured values, not every possible secret. |
-| `git diff --check` | Pass before the final documentation update; rerun at completion. |
+| Fresh Git clone of local commit `7a3b54d` | Pass: `pnpm install --offline --frozen-lockfile` reused 511 cached packages with zero downloads; `authority:keys`, `db:migrate`, `db:seed`, `authority:validate`, `build`, and pinned Go chaincode test all passed. The clone used a fresh ignored `.env`, keypair and SQLite file. The first sandboxed pnpm/tsx/Docker attempts were blocked by filesystem, local IPC and Docker-socket restrictions; the same commands passed with the required local permissions. |
+| `git diff --check` on project-authored files | Pass; vendored third-party Go modules retain their upstream whitespace. |
 
 ## Hackathon fit and unverified rules
 
