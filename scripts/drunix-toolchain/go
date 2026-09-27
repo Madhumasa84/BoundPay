@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH= cd -- "$script_dir/../.." && pwd)
+chaincode_dir="$repo_root/contracts/shared-authority/chaincode"
+
+exec docker run --rm \
+  -v "$chaincode_dir:$chaincode_dir" \
+  -w "$chaincode_dir" \
+  -v /tmp/boundpay-go-modcache:/go/pkg/mod \
+  -v /tmp/boundpay-go-buildcache:/root/.cache/go-build \
+  -e GOCACHE=/root/.cache/go-build \
+  -e GOFLAGS=-buildvcs=false \
+  golang:1.23.0@sha256:acfb46be39840f8c2a6b9efdd673c6627011200c73bab4e6d18b8b9ab4641c46 \
+  go "$@"

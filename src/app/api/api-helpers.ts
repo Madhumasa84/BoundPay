@@ -6,6 +6,8 @@ import { BudgetExceededError, QuoteRevalidationError, StateConflictError } from 
 import { AuthorityConfigurationError, AuthorityVerificationError } from '../../infrastructure/authority/signing';
 import { PassportNotFoundError, PassportValidationError } from '../../services/passport.service';
 import { PaymentModeConfigurationError } from '../../domain/intent';
+import { SharedAuthorityConfigurationError } from '../../infrastructure/shared-authority/config';
+import { SharedAuthorityDeniedError, SharedAuthorityPendingError } from '../../services/shared-authority.service';
 
 export class PayloadTooLargeError extends Error {
   constructor(message = 'Request payload exceeds the permitted size') {
@@ -42,6 +44,12 @@ export function jsonResponse(data: unknown, status = 200, headers: HeadersInit =
 }
 
 export function errorResponse(error: unknown, status = 500): NextResponse {
+  if (error instanceof SharedAuthorityPendingError || error instanceof SharedAuthorityConfigurationError) {
+    return jsonResponse({ error: error.name, message: error.message, transactionId: error instanceof SharedAuthorityPendingError ? error.transactionId : undefined }, 503);
+  }
+  if (error instanceof SharedAuthorityDeniedError) {
+    return jsonResponse({ error: error.name, message: error.message }, 403);
+  }
   if (error instanceof PayloadTooLargeError) {
     return jsonResponse({ error: 'Payload Too Large', message: error.message }, 413);
   }

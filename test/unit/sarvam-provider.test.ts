@@ -604,21 +604,37 @@ describe('Sarvam AI Shopping Model Provider Tests (25 requirements)', () => {
 
   // 22. Fixture mode makes zero Sarvam requests
   it('22. Fixture mode makes zero Sarvam network requests', async () => {
+    const previousPath = process.env.DATABASE_PATH;
+    const testDbDir = path.resolve(process.cwd(), 'data/test');
+    fs.mkdirSync(testDbDir, { recursive: true });
+    const dbPath = path.join(testDbDir, `test-sarvam-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.sqlite`);
+    process.env.DATABASE_PATH = dbPath;
+    closeDefaultDb();
     let networkCallCount = 0;
     const mockFetch = createMockFetch(() => {
       networkCallCount++;
       return new Response('{}', { status: 200 });
     });
 
-    const result = await invokeShoppingAgent('Wireless mouse', 200000, {
-      mode: 'fixture',
-      fetchFn: mockFetch,
-    });
+    try {
+      seedDatabase(dbPath);
+      const result = await invokeShoppingAgent('Wireless mouse', 200000, {
+        mode: 'fixture',
+        fetchFn: mockFetch,
+      });
 
-    expect(networkCallCount).toBe(0);
-    expect(result.source_mode).toBe('FIXTURE');
-    expect(result.suitable).toBe(true);
-    expect(result.product_id).toBe('prod_mouse');
+      expect(networkCallCount).toBe(0);
+      expect(result.source_mode).toBe('FIXTURE');
+      expect(result.suitable).toBe(true);
+      expect(result.product_id).toBe('prod_mouse');
+    } finally {
+      closeDefaultDb();
+      if (previousPath === undefined) delete process.env.DATABASE_PATH;
+      else process.env.DATABASE_PATH = previousPath;
+      for (const suffix of ['', '-wal', '-shm']) {
+        try { fs.unlinkSync(`${dbPath}${suffix}`); } catch {}
+      }
+    }
   });
 
   // 23. Live mode never silently invokes the fixture provider

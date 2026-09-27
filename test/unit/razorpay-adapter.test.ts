@@ -177,6 +177,38 @@ describe('Razorpay Test Adapter Contract & Security Tests', () => {
       expect(result.status).toBe('FAILED');
     });
 
+    it('Keeps a duplicate receipt response UNKNOWN because the original order may exist', async () => {
+      const mockFetch = async () => ({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: {
+            code: 'BAD_REQUEST_ERROR',
+            description: 'An order with the same receipt value has already been created on this account.',
+          },
+        }),
+      } as any);
+
+      const adapter = new RazorpayTestAdapter({
+        keyId: validKeyId,
+        keySecret: validKeySecret,
+        customFetch: mockFetch,
+      });
+
+      const result = await adapter.createOrder({
+        intentId: 'intent_123',
+        amountPaise: 279900,
+        currency: 'INR',
+        merchantId: 'demo_store',
+        description: 'Test',
+        receipt: 'rcpt_intent1234',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.status).toBe('UNKNOWN');
+      expect(result.errorMessage).toContain('reconcile that order');
+    });
+
     it('Returns status UNKNOWN on timeout / 5xx / network error to preserve budget reservation', async () => {
       const mockFetch = async () => {
         throw new Error('ETIMEDOUT: Connection timed out');

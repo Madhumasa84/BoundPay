@@ -23,6 +23,15 @@ export class RazorpaySecurityError extends Error {
   }
 }
 
+function isDuplicateReceiptConflict(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false;
+  const error = (body as { error?: unknown }).error;
+  if (!error || typeof error !== 'object') return false;
+  const description = (error as { description?: unknown }).description;
+  if (typeof description !== 'string') return false;
+  return /same receipt value has already been created|duplicate request.*already been processed/i.test(description);
+}
+
 export class RazorpayTestAdapter implements PaymentAdapter {
   readonly mode = 'RAZORPAY_TEST' as const;
   private readonly keyId: string;
@@ -97,12 +106,18 @@ export class RazorpayTestAdapter implements PaymentAdapter {
       if (!response.ok) {
         const errBody = await response.json().catch(() => ({}));
         const isClientError = response.status >= 400 && response.status < 500;
+        const duplicateReceipt = isDuplicateReceiptConflict(errBody);
         return {
           isMock: false,
           success: false,
-          status: isClientError ? 'FAILED' : 'UNKNOWN',
+          // Razorpay treats receipt as the order-creation idempotency key.
+          // A duplicate receipt means an order may already exist, so it is
+          // unsafe to release the authorization as a definitive rejection.
+          status: duplicateReceipt ? 'UNKNOWN' : isClientError ? 'FAILED' : 'UNKNOWN',
           rawResponse: errBody,
-          errorMessage: `Razorpay order creation failed (HTTP ${response.status}): ${JSON.stringify(errBody)}`,
+          errorMessage: duplicateReceipt
+            ? `Razorpay reports an order already exists for this receipt (HTTP ${response.status}); reconcile that order before resolving the reservation`
+            : `Razorpay order creation failed (HTTP ${response.status}): ${JSON.stringify(errBody)}`,
         };
       }
 

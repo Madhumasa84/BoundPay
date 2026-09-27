@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { loadCliEnv } from '../config/load-cli-env';
 import { getDatabasePath } from './index';
 import { seedDatabase } from './seed';
 
@@ -31,5 +32,6 @@ export function resetDatabase(dbPath: string = getDatabasePath(), force = false)
 }
 
 if (require.main === module) {
+  loadCliEnv();
   resetDatabase();
 }

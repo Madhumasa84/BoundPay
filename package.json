@@ -16,11 +16,13 @@
     "test:integration": "vitest run test/integration",
     "test:stress": "AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK AUTHORITY_TEST_MODE=true CONCURRENCY_STRESS_ROUNDS=25 vitest run test/integration/db-concurrency-multiprocess.test.ts test/integration/authority-passport-process-contention.test.ts",
     "test:deterministic": "vitest run test/evaluation/deterministic-manifest.test.ts",
+    "shared-authority:drunix-demo": "node scripts/drunix-shared-authority-demo.mjs",
+    "shared-authority:drunix-app-demo": "node scripts/drunix-boundpay-services-demo.mjs",
     "test:state": "vitest run test/property/state-machine-sequences.prop.test.ts",
     "eval:manifest": "tsx evaluation/generate-manifest.ts",
     "eval:latency": "tsx evaluation/benchmark-policy.ts",
     "eval:live": "tsx evaluation/run-live-model-evaluation.ts",
-    "test:e2e": "AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK PAYMENT_MODE=mock AUTHORITY_TEST_MODE=true AUTHORITY_SIGNING_PRIVATE_KEY= AUTHORITY_SIGNING_PUBLIC_KEY= AUTHORITY_SIGNING_PRIVATE_KEY_FILE= AUTHORITY_SIGNING_PUBLIC_KEY_FILE= AUTHORITY_VERIFICATION_KEYS_JSON= RAZORPAY_KEY_ID= RAZORPAY_KEY_SECRET= RAZORPAY_WEBHOOK_SECRET= SARVAM_API_KEY= DATABASE_PATH=/tmp/boundpay-e2e.sqlite CONFIRM_RESET=true tsx src/infrastructure/db/reset.ts && AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK PAYMENT_MODE=mock AUTHORITY_TEST_MODE=true AUTHORITY_SIGNING_PRIVATE_KEY= AUTHORITY_SIGNING_PUBLIC_KEY= AUTHORITY_SIGNING_PRIVATE_KEY_FILE= AUTHORITY_SIGNING_PUBLIC_KEY_FILE= AUTHORITY_VERIFICATION_KEYS_JSON= RAZORPAY_KEY_ID= RAZORPAY_KEY_SECRET= RAZORPAY_WEBHOOK_SECRET= SARVAM_API_KEY= DATABASE_PATH=/tmp/boundpay-e2e.sqlite playwright test",
+    "test:e2e": "AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK PAYMENT_MODE=mock AUTHORITY_TEST_MODE=true AUTHORITY_SIGNING_KEY_ID=test-only-key-v1 AUTHORITY_ISSUER=boundpay-test-authority AUTHORITY_AUDIENCE=boundpay-agent AUTHORITY_SIGNING_PRIVATE_KEY= AUTHORITY_SIGNING_PUBLIC_KEY= AUTHORITY_SIGNING_PRIVATE_KEY_FILE= AUTHORITY_SIGNING_PUBLIC_KEY_FILE= AUTHORITY_VERIFICATION_KEYS_JSON= RAZORPAY_KEY_ID= RAZORPAY_KEY_SECRET= RAZORPAY_WEBHOOK_SECRET= SARVAM_API_KEY= DATABASE_PATH=/tmp/boundpay-e2e.sqlite CONFIRM_RESET=true tsx src/infrastructure/db/reset.ts && AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK PAYMENT_MODE=mock AUTHORITY_TEST_MODE=true AUTHORITY_SIGNING_KEY_ID=test-only-key-v1 AUTHORITY_ISSUER=boundpay-test-authority AUTHORITY_AUDIENCE=boundpay-agent AUTHORITY_SIGNING_PRIVATE_KEY= AUTHORITY_SIGNING_PUBLIC_KEY= AUTHORITY_SIGNING_PRIVATE_KEY_FILE= AUTHORITY_SIGNING_PUBLIC_KEY_FILE= AUTHORITY_VERIFICATION_KEYS_JSON= RAZORPAY_KEY_ID= RAZORPAY_KEY_SECRET= RAZORPAY_WEBHOOK_SECRET= SARVAM_API_KEY= DATABASE_PATH=/tmp/boundpay-e2e.sqlite playwright test",
     "db:migrate": "tsx src/infrastructure/db/migrate.ts",
     "db:seed": "tsx src/infrastructure/db/seed.ts",
     "db:reset": "tsx src/infrastructure/db/reset.ts",
@@ -39,6 +41,8 @@
     }
   },
   "dependencies": {
+    "@grpc/grpc-js": "1.14.0",
+    "@hyperledger/fabric-gateway": "1.10.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^11.8.1",
     "clsx": "^2.1.1",

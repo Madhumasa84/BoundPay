@@ -247,6 +247,7 @@ export function verifyDecisionReceiptSync(token: string): DecisionReceiptPayload
 /** Async JOSE verification path used by API endpoints and offline proof consumers. */
 export async function verifySignedToken(token: string, expected: 'passport' | 'receipt', publicKeyPem?: string): Promise<Record<string, unknown>> {
   const config = getAuthorityConfig();
+  parseCompactSync(token);
   const header = decodeProtectedHeader(token);
   if (header.alg !== AUTHORITY_ALGORITHM || header.typ !== (expected === 'passport' ? AUTHORITY_PASSPORT_TYP : AUTHORITY_RECEIPT_TYP)) throw new AuthorityVerificationError('Unsupported algorithm or token type');
   const kid = header.kid;
@@ -287,6 +288,7 @@ export async function verifySignedTokenOffline(
 ): Promise<Record<string, unknown>> {
   if (typeof publicKeyPem !== 'string' || publicKeyPem.length > 8192) throw new AuthorityVerificationError('Invalid offline verification key');
   ensureEd25519PublicKey(publicKeyPem);
+  parseCompactSync(token);
   const header = decodeProtectedHeader(token);
   if (header.alg !== AUTHORITY_ALGORITHM || header.typ !== (expected === 'passport' ? AUTHORITY_PASSPORT_TYP : AUTHORITY_RECEIPT_TYP)) {
     throw new AuthorityVerificationError('Unsupported algorithm or token type');

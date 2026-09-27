@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { loadCliEnv } from '../config/load-cli-env';
 import { createSqliteConnection, getDatabasePath } from './index';
 
 export const MIGRATION_SQL = `
@@ -217,6 +218,53 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_webhook_events_unique ON webhook_events(pr
 CREATE INDEX IF NOT EXISTS idx_webhook_order ON webhook_events(order_id);
 CREATE INDEX IF NOT EXISTS idx_webhook_status ON webhook_events(status);
 
+CREATE TABLE IF NOT EXISTS shared_authority_mandates (
+  mandate_id TEXT PRIMARY KEY,
+  passport_id TEXT NOT NULL REFERENCES authority_passports(id),
+  owner_id TEXT NOT NULL REFERENCES operators(id),
+  passport_digest TEXT NOT NULL,
+  aggregate_cap_paise INTEGER NOT NULL,
+  per_transaction_cap_paise INTEGER NOT NULL,
+  maximum_usage_count INTEGER NOT NULL,
+  policy_version INTEGER NOT NULL,
+  participant_msps_json TEXT NOT NULL,
+  participant_identities_json TEXT NOT NULL DEFAULT '[]',
+  verifier_identities_json TEXT NOT NULL,
+  lifecycle_status TEXT NOT NULL DEFAULT 'PENDING',
+  scope_commitment TEXT NOT NULL,
+  scope_salt_ciphertext TEXT NOT NULL,
+  issued_transaction_id TEXT,
+  validation_code TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_shared_authority_mandates_owner ON shared_authority_mandates(owner_id);
+CREATE INDEX IF NOT EXISTS idx_shared_authority_mandates_passport ON shared_authority_mandates(passport_id);
+
+CREATE TABLE IF NOT EXISTS shared_authority_operations (
+  intent_id TEXT PRIMARY KEY REFERENCES purchase_intents(id),
+  mandate_id TEXT NOT NULL,
+  reservation_id TEXT NOT NULL UNIQUE,
+  payment_attempt_id TEXT NOT NULL,
+  request_commitment TEXT NOT NULL,
+  purchase_salt_ciphertext TEXT NOT NULL,
+  evidence_salt_ciphertext TEXT,
+  ledger_state TEXT NOT NULL,
+  payment_dispatch_state TEXT NOT NULL,
+  payment_state TEXT NOT NULL,
+  reserve_transaction_id TEXT,
+  dispatch_transaction_id TEXT,
+  outcome_transaction_id TEXT,
+  outcome_commitment TEXT,
+  validation_code TEXT,
+  last_error TEXT,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_shared_authority_operations_mandate ON shared_authority_operations(mandate_id);
+CREATE INDEX IF NOT EXISTS idx_shared_authority_operations_ledger_state ON shared_authority_operations(ledger_state);
+CREATE INDEX IF NOT EXISTS idx_shared_authority_operations_payment_state ON shared_authority_operations(payment_state);
+
 CREATE TRIGGER IF NOT EXISTS authority_passports_validate_insert
 BEFORE INSERT ON authority_passports
 WHEN NEW.status NOT IN ('ACTIVE', 'REVOKED', 'EXPIRED')
@@ -260,6 +308,11 @@ export function runMigrations(sqlite: Database.Database): void {
   const migrate = sqlite.transaction(() => {
     sqlite.exec(MIGRATION_SQL);
 
+    const sharedMandateColumns = sqlite.pragma('table_info(shared_authority_mandates)') as Array<{ name: string }>;
+    if (!sharedMandateColumns.some((column) => column.name === 'participant_identities_json')) {
+      sqlite.exec("ALTER TABLE shared_authority_mandates ADD COLUMN participant_identities_json TEXT NOT NULL DEFAULT '[]'");
+    }
+
     // Safely alter purchase_intents for any existing database files.
     const columns = sqlite.pragma('table_info(purchase_intents)') as Array<{ name: string }>;
     const colNames = new Set(columns.map((c) => c.name));
@@ -296,6 +349,7 @@ export function runMigrations(sqlite: Database.Database): void {
 }
 
 if (require.main === module) {
+  loadCliEnv();
   const dbPath = getDatabasePath();
   console.log(`Running migrations on ${dbPath}...`);
   const sqlite = createSqliteConnection(dbPath);

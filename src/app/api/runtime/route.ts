@@ -1,6 +1,7 @@
 import { jsonResponse, requireAuth } from '@/app/api/api-helpers';
 import { resolvePaymentAdapterMode } from '@/domain/intent';
 import { validateAuthorityConfiguration, AuthorityConfigurationError } from '@/infrastructure/authority/signing';
+import { getSharedAuthorityLabel, getSharedAuthorityMode } from '@/infrastructure/shared-authority/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,9 @@ export async function GET(req: Request) {
   return jsonResponse({
     agentMode: process.env.AGENT_MODE === 'live' ? 'LIVE_MODEL' : 'FIXTURE',
     paymentMode,
+    sharedAuthorityMode: getSharedAuthorityMode(),
+    sharedAuthorityLabel: getSharedAuthorityLabel(),
+    paymentLabel: paymentMode === 'RAZORPAY_TEST' ? 'RAZORPAY TEST — PROVIDER SANDBOX' : 'MOCK — SYNTHETIC PAYMENT',
     razorpayConfigured: paymentMode === 'RAZORPAY_TEST' && hasValidTestKey && hasSecret,
     razorpayKeyId: paymentMode === 'RAZORPAY_TEST' && hasValidTestKey ? process.env.RAZORPAY_KEY_ID : null,
     authority,

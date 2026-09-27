@@ -17,6 +17,15 @@ import {
 } from './passport.service';
 import { PassportUsageStatus, statusForPassport } from '../domain/passport';
 import { verifyPassportSignatureSync } from '../infrastructure/authority/signing';
+import { getSharedAuthorityMode } from '../infrastructure/shared-authority/config';
+import {
+  markSharedPaymentUnknown,
+  markSharedProviderOrder,
+  markSharedProviderRequestStarted,
+  prepareSharedDispatch,
+  recordSharedPaymentOutcome,
+  SharedAuthorityDeniedError,
+} from './shared-authority.service';
 
 export interface ExecutionResult {
   intent: PurchaseIntent;
@@ -100,10 +109,19 @@ export class ExecutionService {
         throw new StateConflictError('Unauthorized: operator does not own this intent');
       }
 
-      // Check state: must be READY or APPROVED to transition to EXECUTING
-      if (intentRow.state !== IntentStates.READY && intentRow.state !== IntentStates.APPROVED) {
+      const sharedOperation = db.select().from(schema.sharedAuthorityOperations).where(eq(schema.sharedAuthorityOperations.intent_id, intentId)).get();
+      const priorSpendReservation = db.select().from(schema.spendLedger).where(and(eq(schema.spendLedger.intent_id, intentId), eq(schema.spendLedger.status, 'RESERVED'))).get();
+      const safeSharedResume = getSharedAuthorityMode() === 'DRUNIX'
+        && (intentRow.state === IntentStates.UNKNOWN || intentRow.state === IntentStates.EXECUTING)
+        && sharedOperation?.payment_dispatch_state === 'NOT_SENT'
+        && Boolean(priorSpendReservation);
+      const hasExistingReservation = safeSharedResume && Boolean(priorSpendReservation);
+
+      // Recovery is allowed only when the durable pre-request marker proves
+      // this executor has not called the provider. MAY_HAVE_SENT is never retried.
+      if (intentRow.state !== IntentStates.READY && intentRow.state !== IntentStates.APPROVED && !safeSharedResume) {
         throw new StateConflictError(
-          `Intent is in state '${intentRow.state}', cannot be claimed for execution (must be READY or APPROVED)`
+          `Intent is in state '${intentRow.state}', cannot be claimed or safely resumed for execution`
         );
       }
 
@@ -269,8 +287,12 @@ export class ExecutionService {
         return { revalidationError: new QuoteRevalidationError('Canonical intent digest changed; new proposal and authorization required'), passportDecision: 'BLOCKED', passportReasonCode: 'CANONICAL_INTENT_DIGEST_MISMATCH' };
       }
 
-      // 5. Revalidate Approval Binding if state was APPROVED
-      if (intentRow.state === IntentStates.APPROVED) {
+      // 5. Revalidate approval binding for an approved intent and again when
+      // recovering a no-send shared dispatch that currently exceeds either
+      // human-approval threshold.
+      const approvalStillRequired = intentRow.total_amount_paise > latestPolicy.approval_threshold_paise
+        || Boolean(passportPayloadForUsage && intentRow.total_amount_paise > passportPayloadForUsage.approvalRequiredAbovePaise);
+      if (intentRow.state === IntentStates.APPROVED || (safeSharedResume && approvalStillRequired)) {
         const approval = db
           .select()
           .from(schema.intentApprovals)
@@ -318,7 +340,7 @@ export class ExecutionService {
 
       const activeReservationsPaise = activeReservationRows.reduce((sum, r) => sum + r.amount_paise, 0);
 
-      const projectedTotalPaise = confirmedTodayPaise + activeReservationsPaise + intentRow.total_amount_paise;
+      const projectedTotalPaise = confirmedTodayPaise + activeReservationsPaise + (hasExistingReservation ? 0 : intentRow.total_amount_paise);
 
       if (projectedTotalPaise > latestPolicy.daily_budget_paise) {
         throw new BudgetExceededError(
@@ -330,11 +352,12 @@ export class ExecutionService {
       // transaction. RESERVED/COMMITTED/CONFIRMED/UNKNOWN all consume both
       // limits; only a definite provider rejection can release a usage row.
       if (passportRow && passportPayloadForUsage) {
-        const passportUsageRows = db.select().from(schema.passportUsages).where(and(
+        const allPassportUsageRows = db.select().from(schema.passportUsages).where(and(
           eq(schema.passportUsages.passport_id, intentRow.passport_id!),
           eq(schema.passportUsages.payment_adapter_mode, intentRow.payment_adapter_mode),
           inArray(schema.passportUsages.usage_status, ['RESERVED', 'COMMITTED', 'CONFIRMED', 'UNKNOWN'])
         )).all();
+        const passportUsageRows = hasExistingReservation ? allPassportUsageRows.filter((row) => row.intent_id !== intentId) : allPassportUsageRows;
         const passportCommittedPaise = passportUsageRows.reduce((sum, row) => sum + row.amount_paise, 0);
         if (passportCommittedPaise + intentRow.total_amount_paise > passportPayloadForUsage.cumulativeBudgetPaise) {
           const message = 'Execution exceeds authority passport cumulative budget; no provider call made';
@@ -351,23 +374,25 @@ export class ExecutionService {
       }
 
       // 7. Atomic Write: Create Spend Ledger Reservation and Transition Intent to EXECUTING
-      assertValidTransition(intentRow.state, IntentStates.EXECUTING);
+      if (!safeSharedResume) assertValidTransition(intentRow.state as any, IntentStates.EXECUTING);
 
-      const ledgerId = crypto.randomUUID();
+      const ledgerId = hasExistingReservation ? priorSpendReservation!.id : crypto.randomUUID();
 
-      db.insert(schema.spendLedger).values({
-        id: ledgerId,
-        intent_id: intentId,
-        amount_paise: intentRow.total_amount_paise,
-        status: 'RESERVED',
-        reservation_timestamp: nowIso,
-        confirmation_timestamp: null,
-        payment_adapter_mode: intentRow.payment_adapter_mode,
-        provider_order_id: null,
-        provider_payment_id: null,
-      }).run();
+      if (!hasExistingReservation) {
+        db.insert(schema.spendLedger).values({
+          id: ledgerId,
+          intent_id: intentId,
+          amount_paise: intentRow.total_amount_paise,
+          status: 'RESERVED',
+          reservation_timestamp: nowIso,
+          confirmation_timestamp: null,
+          payment_adapter_mode: intentRow.payment_adapter_mode,
+          provider_order_id: null,
+          provider_payment_id: null,
+        }).run();
+      }
 
-      if (passportRow && passportPayloadForUsage) {
+      if (passportRow && passportPayloadForUsage && !hasExistingReservation) {
         db.insert(schema.passportUsages).values({
           id: crypto.randomUUID(),
           passport_id: intentRow.passport_id!,
@@ -379,6 +404,12 @@ export class ExecutionService {
           released_or_committed_timestamp: null,
           created_at: nowIso,
         }).run();
+      } else if (passportRow && passportPayloadForUsage && hasExistingReservation) {
+        db.update(schema.passportUsages).set({ usage_status: PassportUsageStatus.RESERVED, released_or_committed_timestamp: null }).where(and(
+          eq(schema.passportUsages.passport_id, intentRow.passport_id!),
+          eq(schema.passportUsages.intent_id, intentId),
+          inArray(schema.passportUsages.usage_status, ['RESERVED', 'COMMITTED', 'UNKNOWN'])
+        )).run();
       }
 
       db.update(schema.purchaseIntents)
@@ -398,6 +429,7 @@ export class ExecutionService {
         stateAfter: IntentStates.EXECUTING,
         payload: {
           ledgerId,
+          resumedBeforeProviderRequest: Boolean(safeSharedResume),
           reservationAmountPaise: intentRow.total_amount_paise,
           confirmedTodayPaise,
           activeReservationsPaise,
@@ -444,6 +476,10 @@ export class ExecutionService {
     faultInjection: PaymentFaultType = 'NONE'
   ): Promise<ExecutionResult> {
     const { db, sqlite } = getDb();
+    const sharedAuthorityMode = getSharedAuthorityMode();
+    if (sharedAuthorityMode === 'SIMULATED') {
+      throw new StateConflictError('SIMULATED ledger mode cannot authorize payment dispatch; use DRUNIX for network-backed execution');
+    }
 
     // Check if intent is already confirmed (repeated checkout attempt idempotency)
     const existing = db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get();
@@ -525,8 +561,42 @@ export class ExecutionService {
       }
     }
 
+    const sharedAuthorityEnabled = sharedAuthorityMode === 'DRUNIX';
+    if (sharedAuthorityEnabled) {
+      try {
+        await prepareSharedDispatch(intent);
+      } catch (error) {
+        const operation = db.select().from(schema.sharedAuthorityOperations).where(eq(schema.sharedAuthorityOperations.intent_id, intent.id)).get();
+        const definitelyRejected = error instanceof SharedAuthorityDeniedError && (!operation || operation.ledger_state === 'RESERVE_REJECTED');
+        const nowIso = this.clock.nowIso();
+        const state = definitelyRejected ? IntentStates.BLOCKED : IntentStates.UNKNOWN;
+        const message = error instanceof Error ? error.message : 'Shared mandate authorization failed';
+        sqlite.transaction(() => {
+          db.update(schema.purchaseIntents).set({ state, failure_reason: message.slice(0, 500), updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+          if (definitelyRejected) {
+            db.update(schema.spendLedger).set({ status: 'RELEASED' }).where(eq(schema.spendLedger.id, ledgerId)).run();
+            if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.RELEASED, nowIso);
+          } else if (intent.passport_id) {
+            markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.UNKNOWN, nowIso);
+          }
+          appendAuditEvent({
+            eventType: definitelyRejected ? 'SHARED_RESERVATION_REJECTED' : 'SHARED_RESERVATION_UNKNOWN',
+            intentId, operatorId, amountPaise: intent.total_amount_paise,
+            stateBefore: IntentStates.EXECUTING, stateAfter: state,
+            payload: { ledgerMode: 'DRUNIX', providerCallMade: false, reservationState: operation?.ledger_state || null }, clock: this.clock,
+          });
+        }).immediate();
+        return {
+          intent: { ...intent, state, failure_reason: message, updated_at: nowIso },
+          ledgerId, isMock: intent.payment_adapter_mode === 'MOCK', success: false, status: state,
+          message: `${message}. No payment request was sent${definitelyRejected ? '; the local hold was released' : '; the local hold is retained until Drunix reconciliation'}.`,
+        };
+      }
+    }
+
     // Step 2: Call Payment Adapter outside database transaction
     try {
+      if (sharedAuthorityEnabled) markSharedProviderRequestStarted(intent.id);
       const orderResult = await adapter.createOrder({
         intentId: intent.id,
         amountPaise: intent.total_amount_paise,
@@ -547,6 +617,7 @@ export class ExecutionService {
             .set({
               state: IntentStates.UNKNOWN,
               failure_reason: orderResult.errorMessage || 'Unknown adapter response during order creation',
+              provider_order_id: orderResult.orderId || null,
               updated_at: nowIso,
             })
             .where(eq(schema.purchaseIntents.id, intentId))
@@ -566,14 +637,28 @@ export class ExecutionService {
           });
           }).immediate();
 
+          if (sharedAuthorityEnabled) await markSharedPaymentUnknown(intent.id, orderResult.errorMessage || 'Order creation outcome is uncertain');
+
           return {
-            intent: { ...intent, state: IntentStates.UNKNOWN, updated_at: nowIso },
+            intent: { ...intent, state: IntentStates.UNKNOWN, provider_order_id: orderResult.orderId || null, updated_at: nowIso },
             ledgerId,
             isMock: orderResult.isMock,
             success: false,
             status: IntentStates.UNKNOWN,
             message: orderResult.errorMessage || 'Order creation outcome uncertain; reservation held',
           };
+        }
+
+        const sharedFailureCommit = sharedAuthorityEnabled
+          ? await recordSharedPaymentOutcome({ intentId: intent.id, outcome: 'DEFINITIVE_FAILURE', providerMode: intent.payment_adapter_mode, orderId: orderResult.orderId })
+          : { confirmed: true };
+        if (!sharedFailureCommit.confirmed) {
+          sqlite.transaction(() => {
+            db.update(schema.purchaseIntents).set({ state: IntentStates.UNKNOWN, failure_reason: 'Provider rejected order, but Drunix release is not yet confirmed', updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+            if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.UNKNOWN, nowIso);
+            appendAuditEvent({ eventType: 'SHARED_FAILURE_RELEASE_PENDING', intentId, operatorId, amountPaise: intent.total_amount_paise, stateBefore: IntentStates.EXECUTING, stateAfter: IntentStates.UNKNOWN, payload: { providerStatus: orderResult.status, ledgerCommitConfirmed: false }, clock: this.clock });
+          }).immediate();
+          return { intent: { ...intent, state: IntentStates.UNKNOWN, updated_at: nowIso }, ledgerId, isMock: orderResult.isMock, success: false, status: IntentStates.UNKNOWN, message: 'Provider reported a definitive rejection, but Drunix has not confirmed release; reservation retained for reconciliation' };
         }
 
         // Definite rejection: mark intent BLOCKED, release reservation
@@ -619,6 +704,7 @@ export class ExecutionService {
       // Order created successfully
       const providerOrderId = orderResult.orderId;
       const orderCreatedTimeIso = this.clock.nowIso();
+      if (sharedAuthorityEnabled) markSharedProviderOrder(intent.id);
 
       sqlite.transaction(() => {
       db.update(schema.purchaseIntents)
@@ -652,7 +738,7 @@ export class ExecutionService {
       // If Razorpay Test mode: stop here and let client complete standard checkout
       if (intent.payment_adapter_mode === 'RAZORPAY_TEST') {
         // Check for any unmatched webhook events that arrived prior to order saving
-        this.reconcileUnmatchedWebhooksForOrder(providerOrderId);
+        await this.reconcileUnmatchedWebhooksForOrder(providerOrderId);
 
         const freshIntent = db
           .select()
@@ -706,6 +792,24 @@ export class ExecutionService {
           };
         }
 
+        if (captureResult.status === 'FAILED' && sharedAuthorityEnabled) {
+          const release = await recordSharedPaymentOutcome({ intentId: intent.id, outcome: 'DEFINITIVE_FAILURE', providerMode: intent.payment_adapter_mode, orderId: providerOrderId, paymentId: captureResult.paymentId });
+          if (release.confirmed) {
+            sqlite.transaction(() => {
+              db.update(schema.purchaseIntents).set({ state: IntentStates.BLOCKED, failure_reason: captureResult.errorMessage || 'Provider confirmed payment failure', updated_at: confirmTimeIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+              db.update(schema.spendLedger).set({ status: 'RELEASED' }).where(eq(schema.spendLedger.id, ledgerId)).run();
+              if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.RELEASED, confirmTimeIso);
+            }).immediate();
+            return { intent: { ...intent, state: IntentStates.BLOCKED, updated_at: confirmTimeIso }, ledgerId, providerOrderId, isMock: true, success: false, status: IntentStates.BLOCKED, message: 'Provider failure and Drunix reservation release are both committed' };
+          }
+          await markSharedPaymentUnknown(intent.id, 'Provider reported failure, but Drunix has not confirmed reservation release');
+          sqlite.transaction(() => {
+            db.update(schema.purchaseIntents).set({ state: IntentStates.UNKNOWN, failure_reason: 'Provider reported failure, but Drunix release remains pending', updated_at: confirmTimeIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+            if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.UNKNOWN, confirmTimeIso);
+          }).immediate();
+          return { intent: { ...intent, state: IntentStates.UNKNOWN, updated_at: confirmTimeIso }, ledgerId, providerOrderId, isMock: true, success: false, status: IntentStates.UNKNOWN, message: 'Provider reported failure; shared reservation remains held until Drunix release is reconciled' };
+        }
+
         // Timeout or indeterminate capture -> UNKNOWN, reservation preserved
         sqlite.transaction(() => {
         db.update(schema.purchaseIntents)
@@ -731,6 +835,8 @@ export class ExecutionService {
         });
         }).immediate();
 
+        if (sharedAuthorityEnabled) await markSharedPaymentUnknown(intent.id, captureResult.errorMessage || 'Payment capture outcome is uncertain');
+
         return {
           intent: { ...intent, state: IntentStates.UNKNOWN, updated_at: confirmTimeIso },
           ledgerId,
@@ -744,6 +850,9 @@ export class ExecutionService {
 
       // Convert Reservation to Confirmed Spend exactly once
       const providerPaymentId = captureResult.paymentId || `mock_pay_${crypto.randomBytes(8).toString('hex')}`;
+      const sharedOutcome = sharedAuthorityEnabled
+        ? await recordSharedPaymentOutcome({ intentId: intent.id, outcome: 'SUCCESS', providerMode: intent.payment_adapter_mode, orderId: providerOrderId, paymentId: providerPaymentId })
+        : { confirmed: true };
 
       sqlite.transaction(() => {
       db.update(schema.spendLedger)
@@ -792,7 +901,7 @@ export class ExecutionService {
         isMock: true,
         success: true,
         status: IntentStates.PAYMENT_CONFIRMED,
-        message: 'Payment confirmed successfully',
+        message: sharedOutcome.confirmed ? 'Payment confirmed successfully; Drunix outcome commit is valid' : 'Payment confirmed by the mock adapter; Drunix outcome commit remains pending and the shared allowance stays reserved',
       };
     } catch (err: any) {
       // The reservation was committed before the external call. An exception at
@@ -832,6 +941,7 @@ export class ExecutionService {
         });
         }).immediate();
       }
+      if (sharedAuthorityEnabled) await markSharedPaymentUnknown(intent.id, `Payment adapter outcome uncertain: ${message}`);
 
       return {
         intent: {
@@ -988,6 +1098,9 @@ export class ExecutionService {
       };
     }
 
+    const sharedOutcome = getSharedAuthorityMode() === 'DRUNIX'
+      ? await recordSharedPaymentOutcome({ intentId, outcome: 'SUCCESS', providerMode: intent.payment_adapter_mode as 'MOCK' | 'RAZORPAY_TEST', orderId: params.orderId, paymentId: params.paymentId })
+      : { confirmed: true };
     const finalized = this.finalizeCapturedPaymentAtomic(intentId, params.orderId, params.paymentId, 'CHECKOUT_CALLBACK');
 
     return {
@@ -997,7 +1110,7 @@ export class ExecutionService {
       isMock: captureResult.isMock,
       success: true,
       status: IntentStates.PAYMENT_CONFIRMED,
-      message: 'Payment verified and confirmed via Razorpay checkout callback',
+      message: sharedOutcome.confirmed ? 'Payment verified and confirmed via Razorpay checkout callback; Drunix outcome is VALID' : 'Payment is verified by Razorpay; Drunix outcome commit is pending and its reservation remains held',
     };
   }
 
@@ -1006,7 +1119,7 @@ export class ExecutionService {
    * Useful when browser callback was missed or delayed. Never creates a new order.
    */
   async refreshPaymentStatus(intentId: string, operatorId: string): Promise<ExecutionResult> {
-    const { db } = getDb();
+    const { db, sqlite } = getDb();
     const intent = db.select().from(schema.purchaseIntents).where(eq(schema.purchaseIntents.id, intentId)).get();
 
     if (!intent) {
@@ -1017,7 +1130,8 @@ export class ExecutionService {
       throw new StateConflictError('Unauthorized: operator does not own this intent');
     }
 
-    if (intent.state === IntentStates.PAYMENT_CONFIRMED) {
+    const alreadyConfirmed = intent.state === IntentStates.PAYMENT_CONFIRMED;
+    if (alreadyConfirmed && !intent.provider_order_id) {
       return {
         intent: intent as PurchaseIntent,
         providerOrderId: intent.provider_order_id || undefined,
@@ -1045,7 +1159,9 @@ export class ExecutionService {
 
     if (statusResult.status === 'CAPTURED') {
       const paymentId = statusResult.paymentId || `prov_pay_${Date.now()}`;
-
+      const sharedOutcome = getSharedAuthorityMode() === 'DRUNIX'
+        ? await recordSharedPaymentOutcome({ intentId, outcome: 'SUCCESS', providerMode: intent.payment_adapter_mode as 'MOCK' | 'RAZORPAY_TEST', orderId: intent.provider_order_id, paymentId })
+        : { confirmed: true };
       const finalized = this.finalizeCapturedPaymentAtomic(intentId, intent.provider_order_id, paymentId, 'STATUS_REFRESH');
 
       return {
@@ -1055,8 +1171,60 @@ export class ExecutionService {
         isMock: statusResult.isMock,
         success: true,
         status: IntentStates.PAYMENT_CONFIRMED,
-        message: 'Payment verified and confirmed via provider status refresh',
+        message: sharedOutcome.confirmed ? 'Payment verified and confirmed via provider status refresh; Drunix outcome is VALID' : 'Provider confirmed payment; Drunix outcome commit remains pending and the allowance stays reserved',
       };
+    }
+
+    if (alreadyConfirmed) {
+      return {
+        intent: intent as PurchaseIntent,
+        providerOrderId: intent.provider_order_id,
+        providerPaymentId: intent.provider_payment_id || undefined,
+        isMock: statusResult.isMock,
+        success: true,
+        status: IntentStates.PAYMENT_CONFIRMED,
+        message: `Local payment confirmation is durable; provider currently reports '${statusResult.status}'. No new payment request was sent.`,
+      };
+    }
+
+    if (statusResult.status === 'FAILED') {
+      const sharedFailure = getSharedAuthorityMode() === 'DRUNIX'
+        ? await recordSharedPaymentOutcome({ intentId, outcome: 'DEFINITIVE_FAILURE', providerMode: intent.payment_adapter_mode as 'MOCK' | 'RAZORPAY_TEST', orderId: intent.provider_order_id, paymentId: statusResult.paymentId })
+        : { confirmed: true };
+      if (!sharedFailure.confirmed) {
+        sqlite.transaction(() => {
+          db.update(schema.purchaseIntents).set({ state: IntentStates.UNKNOWN, failure_reason: 'Provider failure was reported, but the Drunix reservation release is not committed', updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+          if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.UNKNOWN, nowIso);
+          appendAuditEvent({ eventType: 'SHARED_FAILURE_RELEASE_PENDING', intentId, operatorId, amountPaise: intent.total_amount_paise, stateBefore: intent.state, stateAfter: IntentStates.UNKNOWN, payload: { providerStatus: statusResult.status, ledgerCommitConfirmed: false }, clock: this.clock });
+        }).immediate();
+        return {
+          intent: { ...intent, state: IntentStates.UNKNOWN, updated_at: nowIso } as PurchaseIntent,
+          providerOrderId: intent.provider_order_id,
+          isMock: statusResult.isMock,
+          success: false,
+          status: IntentStates.UNKNOWN,
+          message: 'Provider reports definitive failure, but the shared reservation remains held until Drunix release is committed',
+        };
+      }
+
+      sqlite.transaction(() => {
+        db.update(schema.purchaseIntents).set({ state: IntentStates.BLOCKED, failure_reason: 'Provider failure was confirmed during reconciliation', updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+        db.update(schema.spendLedger).set({ status: 'RELEASED' }).where(eq(schema.spendLedger.intent_id, intentId)).run();
+        if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.RELEASED, nowIso);
+        appendAuditEvent({ eventType: 'PAYMENT_DEFINITIVE_FAILURE_RECONCILED', intentId, operatorId, amountPaise: intent.total_amount_paise, stateBefore: intent.state, stateAfter: IntentStates.BLOCKED, payload: { providerStatus: statusResult.status, drunixReleaseCommitted: true, transactionId: sharedFailure.transactionId }, clock: this.clock });
+      }).immediate();
+      return {
+        intent: { ...intent, state: IntentStates.BLOCKED, updated_at: nowIso } as PurchaseIntent,
+        providerOrderId: intent.provider_order_id,
+        isMock: statusResult.isMock,
+        success: false,
+        status: IntentStates.BLOCKED,
+        message: sharedFailure.confirmed ? 'Provider failure was verified and the Drunix reservation release is VALID' : 'Provider failure reconciliation is pending',
+      };
+    }
+
+    if (statusResult.status === 'UNKNOWN' && getSharedAuthorityMode() === 'DRUNIX') {
+      await markSharedPaymentUnknown(intentId, 'Provider status query returned UNKNOWN');
     }
 
     return {
@@ -1065,7 +1233,11 @@ export class ExecutionService {
       isMock: statusResult.isMock,
       success: false,
       status: intent.state,
-      message: `Provider order status is currently '${statusResult.status}'`,
+      message: statusResult.status === 'UNKNOWN'
+        ? 'Provider has no definitive status for this attempt; the reservation remains held and no retry was sent.'
+        : statusResult.status === 'PENDING'
+          ? 'Provider still reports a pending payment; the reservation remains held while it is reconciled.'
+          : `Provider order status is currently '${statusResult.status}'`,
     };
   }
 
@@ -1084,11 +1256,25 @@ export class ExecutionService {
       throw new StateConflictError('Unauthorized');
     }
 
+    const recordedOutcome = await this.retryRecordedSharedOutcome(intent as PurchaseIntent, operatorId);
+    if (recordedOutcome) return recordedOutcome;
+
     const adapter = this.getAdapterForMode(intent.payment_adapter_mode as 'MOCK' | 'RAZORPAY_TEST');
+    if (intent.provider_order_id) return this.refreshPaymentStatus(intentId, operatorId);
 
     if (adapter.reconcileOrderByReceipt && intent.receipt) {
       const reconciled = await adapter.reconcileOrderByReceipt(intent.receipt);
-      if (reconciled && reconciled.status === 'CAPTURED') {
+      if (reconciled) {
+        const nowIso = this.clock.nowIso();
+        db.update(schema.purchaseIntents).set({ provider_order_id: reconciled.orderId, updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intentId)).run();
+        const ledger = db.select().from(schema.spendLedger).where(eq(schema.spendLedger.intent_id, intentId)).get();
+        if (ledger) db.update(schema.spendLedger).set({ provider_order_id: reconciled.orderId }).where(eq(schema.spendLedger.id, ledger.id)).run();
+        if (reconciled.status !== 'CAPTURED') {
+          if (['UNKNOWN', 'PENDING'].includes(reconciled.status)) return this.refreshPaymentStatus(intentId, operatorId);
+          db.update(schema.purchaseIntents).set({ state: IntentStates.ORDER_CREATED }).where(eq(schema.purchaseIntents.id, intentId)).run();
+          markSharedProviderOrder(intentId);
+          return this.refreshPaymentStatus(intentId, operatorId);
+        }
         return this.refreshPaymentStatus(intentId, operatorId);
       }
     }
@@ -1098,14 +1284,77 @@ export class ExecutionService {
       isMock: intent.payment_adapter_mode === 'MOCK',
       success: false,
       status: intent.state,
-      message: 'Reconciliation checked: no matching captured order found on provider',
+      message: 'Provider lookup found no order by the existing receipt. This is not proof the create-order request failed; no retry was sent and the reservation remains held.',
+    };
+  }
+
+  /** Retry a previously provider-verified Drunix outcome from its durable local commitment. */
+  private async retryRecordedSharedOutcome(intent: PurchaseIntent, operatorId: string): Promise<ExecutionResult | null> {
+    if (getSharedAuthorityMode() !== 'DRUNIX') return null;
+    const { db, sqlite } = getDb();
+    const operation = db.select().from(schema.sharedAuthorityOperations)
+      .where(eq(schema.sharedAuthorityOperations.intent_id, intent.id)).get();
+    if (!operation || !operation.outcome_commitment || !operation.evidence_salt_ciphertext) return null;
+
+    const isSuccess = operation.payment_state === 'SUCCEEDED' && intent.state === IntentStates.PAYMENT_CONFIRMED;
+    const isFailure = operation.payment_state === 'FAILED_DEFINITIVE' && intent.state !== IntentStates.BLOCKED;
+    if (!isSuccess && !isFailure) return null;
+
+    const outcome = await recordSharedPaymentOutcome({
+      intentId: intent.id,
+      outcome: isSuccess ? 'SUCCESS' : 'DEFINITIVE_FAILURE',
+      providerMode: intent.payment_adapter_mode as 'MOCK' | 'RAZORPAY_TEST',
+      orderId: intent.provider_order_id || undefined,
+      paymentId: intent.provider_payment_id || undefined,
+    });
+    const nowIso = this.clock.nowIso();
+
+    if (isSuccess) {
+      return {
+        intent,
+        providerOrderId: intent.provider_order_id || undefined,
+        providerPaymentId: intent.provider_payment_id || undefined,
+        isMock: intent.payment_adapter_mode === 'MOCK',
+        success: true,
+        status: IntentStates.PAYMENT_CONFIRMED,
+        message: outcome.confirmed
+          ? 'Previously verified payment outcome is now VALID on Drunix; no provider request was sent'
+          : 'Payment remains confirmed locally; Drunix outcome is pending and the shared reservation remains held. Retry reconciliation; no provider request was sent.',
+      };
+    }
+
+    if (!outcome.confirmed) {
+      return {
+        intent,
+        providerOrderId: intent.provider_order_id || undefined,
+        isMock: intent.payment_adapter_mode === 'MOCK',
+        success: false,
+        status: IntentStates.UNKNOWN,
+        message: 'Previously verified provider failure is waiting for a VALID Drunix release; its reservation remains held and no provider request was sent.',
+      };
+    }
+
+    sqlite.transaction(() => {
+      db.update(schema.purchaseIntents).set({ state: IntentStates.BLOCKED, failure_reason: 'Provider failure was verified and the Drunix release is VALID', updated_at: nowIso }).where(eq(schema.purchaseIntents.id, intent.id)).run();
+      db.update(schema.spendLedger).set({ status: 'RELEASED' }).where(eq(schema.spendLedger.intent_id, intent.id)).run();
+      if (intent.passport_id) markPassportUsageStatus(intent.passport_id, intent.id, PassportUsageStatus.RELEASED, nowIso);
+      appendAuditEvent({ eventType: 'PAYMENT_DEFINITIVE_FAILURE_RECONCILED', intentId: intent.id, operatorId, amountPaise: intent.total_amount_paise, stateBefore: intent.state, stateAfter: IntentStates.BLOCKED, payload: { drunixReleaseCommitted: true, transactionId: outcome.transactionId, recoveredFromStoredEvidence: true }, clock: this.clock });
+    }).immediate();
+
+    return {
+      intent: { ...intent, state: IntentStates.BLOCKED, updated_at: nowIso } as PurchaseIntent,
+      providerOrderId: intent.provider_order_id || undefined,
+      isMock: intent.payment_adapter_mode === 'MOCK',
+      success: false,
+      status: IntentStates.BLOCKED,
+      message: 'Previously verified provider failure was released by a VALID Drunix commit; no provider request was sent',
     };
   }
 
   /**
    * Reconciles any unmatched webhook events that were received before order was saved.
    */
-  private reconcileUnmatchedWebhooksForOrder(orderId: string): void {
+  private async reconcileUnmatchedWebhooksForOrder(orderId: string): Promise<void> {
     const { db } = getDb();
     const unmatched = db
       .select()
@@ -1205,6 +1454,9 @@ export class ExecutionService {
             payload: { providerOrderId: orderId, providerPaymentId: paymentId, reconciledFromWebhook: evt.id },
             clock: this.clock,
           });
+          if (getSharedAuthorityMode() === 'DRUNIX') {
+            await recordSharedPaymentOutcome({ intentId: intent.id, outcome: 'SUCCESS', providerMode: 'RAZORPAY_TEST', orderId, paymentId });
+          }
         }
       } catch {}
     }
@@ -1362,7 +1614,10 @@ export class ExecutionService {
         }).run();
       });
 
-      return { status: 'CONFIRMED_FROM_WEBHOOK', processed: true };
+      const sharedOutcome = getSharedAuthorityMode() === 'DRUNIX'
+        ? await recordSharedPaymentOutcome({ intentId: intent.id, outcome: 'SUCCESS', providerMode: 'RAZORPAY_TEST', orderId, paymentId: paymentId || undefined })
+        : { confirmed: true };
+      return { status: sharedOutcome.confirmed ? 'CONFIRMED_FROM_WEBHOOK' : 'CONFIRMED_LEDGER_PENDING', processed: true, reason: sharedOutcome.confirmed ? undefined : 'Provider payment is verified; Drunix outcome commit remains pending and the reservation stays held' };
     }
 
     // Other events (e.g. payment.failed)

@@ -78,8 +78,10 @@ describe('Phase 4 migrations preserve Phase 3 data', () => {
   });
 
   it('migrating a copied Phase 3 database preserves intents, ledger, audit, and provider evidence', () => {
-    const source = path.resolve(process.cwd(), 'data/boundpay.sqlite');
-    expect(fs.existsSync(source), 'the completed Phase 3 database evidence must remain present').toBe(true);
+    const source = tempDb('phase3-source');
+    const sourceSqlite = createSqliteConnection(source);
+    sourceSqlite.exec(fs.readFileSync(path.resolve(process.cwd(), 'test/fixtures/phase3-legacy.sql'), 'utf8'));
+    sourceSqlite.close();
     const copy = tempDb('phase3-copy');
     fs.copyFileSync(source, copy);
     const beforeSqlite = createSqliteConnection(copy);
@@ -87,15 +89,21 @@ describe('Phase 4 migrations preserve Phase 3 data', () => {
     const beforeIntents = beforeDb.select({ id: schema.purchaseIntents.id, order: schema.purchaseIntents.provider_order_id, payment: schema.purchaseIntents.provider_payment_id }).from(schema.purchaseIntents).all();
     const beforeLedger = beforeDb.select().from(schema.spendLedger).all();
     const beforeAudit = beforeDb.select().from(schema.auditEvents).all();
+    const beforeWebhooks = beforeDb.select().from(schema.webhookEvents).all();
     const beforeProviderEvidence = beforeIntents.filter((row) => row.order || row.payment);
+    expect(beforeIntents).toHaveLength(1);
+    expect(beforeProviderEvidence).toHaveLength(1);
+    expect(beforeWebhooks).toHaveLength(1);
     runMigrations(beforeSqlite);
     const afterDb = createDrizzleClient(beforeSqlite);
     const afterIntents = afterDb.select({ id: schema.purchaseIntents.id, order: schema.purchaseIntents.provider_order_id, payment: schema.purchaseIntents.provider_payment_id }).from(schema.purchaseIntents).all();
     const afterLedger = afterDb.select().from(schema.spendLedger).all();
     const afterAudit = afterDb.select().from(schema.auditEvents).all();
+    const afterWebhooks = afterDb.select().from(schema.webhookEvents).all();
     expect(afterIntents).toEqual(expect.arrayContaining(beforeIntents));
     expect(afterLedger).toHaveLength(beforeLedger.length);
     expect(afterAudit).toHaveLength(beforeAudit.length);
+    expect(afterWebhooks).toEqual(beforeWebhooks);
     expect(afterIntents.filter((row) => row.order || row.payment)).toEqual(expect.arrayContaining(beforeProviderEvidence));
     expect(afterDb.select().from(schema.authorityPassports).all()).toBeDefined();
     expect(afterDb.select().from(schema.passportUsages).all()).toBeDefined();

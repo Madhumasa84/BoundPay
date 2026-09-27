@@ -222,3 +222,52 @@ export const webhookEvents = sqliteTable('webhook_events', {
   orderIdx: index('idx_webhook_order').on(table.order_id),
   statusIdx: index('idx_webhook_status').on(table.status),
 }));
+
+/** Local-only evidence needed to verify salted mandate commitments. */
+export const sharedAuthorityMandates = sqliteTable('shared_authority_mandates', {
+  mandate_id: text('mandate_id').primaryKey(),
+  passport_id: text('passport_id').notNull().references(() => authorityPassports.id),
+  owner_id: text('owner_id').notNull().references(() => operators.id),
+  passport_digest: text('passport_digest').notNull(),
+  aggregate_cap_paise: integer('aggregate_cap_paise').notNull(),
+  per_transaction_cap_paise: integer('per_transaction_cap_paise').notNull(),
+  maximum_usage_count: integer('maximum_usage_count').notNull(),
+  policy_version: integer('policy_version').notNull(),
+  participant_msps_json: text('participant_msps_json').notNull(),
+  participant_identities_json: text('participant_identities_json').notNull().default('[]'),
+  verifier_identities_json: text('verifier_identities_json').notNull(),
+  lifecycle_status: text('lifecycle_status').notNull().default('PENDING'),
+  scope_commitment: text('scope_commitment').notNull(),
+  scope_salt_ciphertext: text('scope_salt_ciphertext').notNull(),
+  issued_transaction_id: text('issued_transaction_id'),
+  validation_code: text('validation_code'),
+  created_at: text('created_at').notNull(),
+}, (table) => ({
+  ownerIdx: index('idx_shared_authority_mandates_owner').on(table.owner_id),
+  passportIdx: index('idx_shared_authority_mandates_passport').on(table.passport_id),
+}));
+
+/** Durable local outbox; payment payloads and commitment salts never enter Drunix state. */
+export const sharedAuthorityOperations = sqliteTable('shared_authority_operations', {
+  intent_id: text('intent_id').primaryKey().references(() => purchaseIntents.id),
+  mandate_id: text('mandate_id').notNull(),
+  reservation_id: text('reservation_id').notNull().unique(),
+  payment_attempt_id: text('payment_attempt_id').notNull(),
+  request_commitment: text('request_commitment').notNull(),
+  purchase_salt_ciphertext: text('purchase_salt_ciphertext').notNull(),
+  evidence_salt_ciphertext: text('evidence_salt_ciphertext'),
+  ledger_state: text('ledger_state').notNull(),
+  payment_dispatch_state: text('payment_dispatch_state').notNull(),
+  payment_state: text('payment_state').notNull(),
+  reserve_transaction_id: text('reserve_transaction_id'),
+  dispatch_transaction_id: text('dispatch_transaction_id'),
+  outcome_transaction_id: text('outcome_transaction_id'),
+  outcome_commitment: text('outcome_commitment'),
+  validation_code: text('validation_code'),
+  last_error: text('last_error'),
+  updated_at: text('updated_at').notNull(),
+}, (table) => ({
+  mandateIdx: index('idx_shared_authority_operations_mandate').on(table.mandate_id),
+  ledgerStateIdx: index('idx_shared_authority_operations_ledger_state').on(table.ledger_state),
+  paymentStateIdx: index('idx_shared_authority_operations_payment_state').on(table.payment_state),
+}));

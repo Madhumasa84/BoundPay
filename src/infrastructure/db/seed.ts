@@ -7,6 +7,7 @@ import { DEFAULT_POLICY } from '../../domain/policy';
 import { eq } from 'drizzle-orm';
 import { ensureDefaultPassport } from '../../services/passport.service';
 import { AuthorityConfigurationError } from '../authority/signing';
+import { loadCliEnv } from '../config/load-cli-env';
 
 export function seedDatabase(dbPath: string = getDatabasePath()) {
   const sqlite = createSqliteConnection(dbPath);
@@ -117,5 +118,6 @@ export function seedDatabase(dbPath: string = getDatabasePath()) {
 }
 
 if (require.main === module) {
+  loadCliEnv();
   seedDatabase();
 }

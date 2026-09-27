@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingBag, ShieldCheck, Activity, KeyRound, LogOut, Lock, AlertTriangle } from 'lucide-react';
+import { ShoppingBag, ShieldCheck, Activity, KeyRound, LogOut, Lock, Network } from 'lucide-react';
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [operator, setOperator] = useState<{ id: string; username: string } | null>(null);
   const [paymentMode, setPaymentMode] = useState<'MOCK' | 'RAZORPAY_TEST' | null>(null);
+  const [sharedAuthorityLabel, setSharedAuthorityLabel] = useState<string>('SHARED AUTHORITY CHECKING…');
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -19,11 +20,14 @@ export function Navbar() {
           setOperator(data.operator);
           fetch('/api/runtime')
             .then((res) => (res.ok ? res.json() : null))
-            .then((runtime) => setPaymentMode(runtime?.paymentMode || null))
+            .then((runtime) => {
+              setPaymentMode(runtime?.paymentMode || null);
+              setSharedAuthorityLabel(runtime?.sharedAuthorityLabel || 'SHARED AUTHORITY UNKNOWN');
+            })
             .catch(() => setPaymentMode(null));
         } else {
           setOperator(null);
-          if (['/shop', '/policy', '/activity', '/passports'].includes(pathname)) router.replace('/login');
+          if (['/shop', '/policy', '/activity', '/passports', '/shared-authority'].includes(pathname)) router.replace('/login');
         }
       })
       .catch(() => setOperator(null));
@@ -40,6 +44,7 @@ export function Navbar() {
     { href: '/policy', label: 'Policy', icon: ShieldCheck },
     { href: '/activity', label: 'Activity', icon: Activity },
     { href: '/passports', label: 'Passports', icon: KeyRound },
+    { href: '/shared-authority', label: 'Shared Spend', icon: Network },
   ];
 
   return (
@@ -87,6 +92,10 @@ export function Navbar() {
             <div className="hidden sm:inline-flex items-center space-x-2 bg-slate-900/90 px-3 py-1 rounded-full text-xs text-slate-300 border border-slate-800 shadow-xs">
               <span className={`w-1.5 h-1.5 rounded-full ${paymentMode === 'RAZORPAY_TEST' ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400'}`} />
               <span className="font-mono text-[11px] tracking-tight">{paymentMode === 'RAZORPAY_TEST' ? 'RAZORPAY TEST MODE' : paymentMode === 'MOCK' ? 'MOCK PAYMENT MODE' : 'MODE CHECKING…'}</span>
+            </div>
+            <div className="hidden xl:inline-flex items-center space-x-2 bg-indigo-950/70 px-3 py-1 rounded-full text-xs text-indigo-200 border border-indigo-800/70 shadow-xs" title="Ledger coordination mode; this is separate from payment provider mode">
+              <Network className="w-3 h-3" />
+              <span className="font-mono text-[10px] tracking-tight">{sharedAuthorityLabel}</span>
             </div>
 
             {operator ? (

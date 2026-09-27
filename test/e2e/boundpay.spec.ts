@@ -165,7 +165,8 @@ test.describe('BoundPay Operator E2E Browser Scenarios', () => {
     await expect(page.getByText('PROVIDER UNCERTAIN')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Reconcile by Receipt' })).toBeVisible();
     await page.getByRole('button', { name: 'Reconcile by Receipt' }).click();
-    await expect(page.getByText(/no matching captured order found/i)).toBeVisible();
+    await expect(page.getByText(/provider has no definitive status for this attempt/i)).toBeVisible();
+    await expect(page.getByText(/reservation remains held and no retry was sent/i)).toBeVisible();
   });
 
   test('Scenario 13: narrow mobile viewport keeps core amount, budget and action usable', async ({ page }) => {
