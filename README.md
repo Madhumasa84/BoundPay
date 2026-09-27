@@ -4,6 +4,12 @@ BoundPay demonstrates bounded financial authority for agentic commerce. A model 
 
 This repository is a buildathon evaluation build, not a production payment product. Its scope is one operator, one approved merchant, INR integer-paise accounting, one application instance, Sarvam AI (sarvam-105b) proposal selection, and Razorpay Standard Checkout in TEST mode.
 
+## Which build is this?
+
+The `main` checkout preserves the original single-service Razorpay evaluation build. The Drunix shared-authority implementation was developed and verified in the isolated local checkout at `/tmp/boundpay-drunix-upgrade`, branch `drunix-shared-authority` (code commit `7a3b54d`, verification notes `c08fd79`). That branch adds the shared mandate contract, Drunix Gateway client, two-service demo, recovery path, and review UI. Its network demonstration used real local Drunix ledger transactions and explicitly labeled MOCK payments; both test organizations ran on one developer-controlled host. The Drunix implementation is not part of this `main` checkout, and that upgrade branch has not been published to the remote repository. Use that checkout and its `docs/DRUNIX_PHASE2_IMPLEMENTATION.md` runbook to reproduce it.
+
+The upgrade does not establish independent organizational governance or payment settlement. Razorpay TEST was not used in the Drunix demonstration, and eligibility for CHL-7007, project reuse, and final submission rules remains unverified. The strongest publicly evidenced event fit is Real-Time Payments for shared pre-dispatch authorization; no payment rail is implemented. See the [Phase 1 design and source review](docs/DRUNIX_PHASE1_DESIGN.md) for the proposal assumptions and unverified event rules.
+
 ## Architecture & Trust Boundaries
 
 ```mermaid
@@ -75,7 +81,7 @@ flowchart TD
 - Versioned Authority Passports: immutable Ed25519/EdDSA-signed, owner/agent-bound mandates with durable revocation, explicit merchant/category/amount/budget/usage constraints, and an atomic passport-usage ledger.
 - Signed authorization decision receipts for every deterministic outcome, offline verification/proof bundles, and a keyboard-operable visual authorization debugger.
 
-See [Architecture](docs/ARCHITECTURE.md), [Authority Passports](docs/AUTHORITY_PASSPORTS.md), [Passport Threat Model](docs/AUTHORITY_PASSPORT_THREAT_MODEL.md), [Threat Model](docs/THREAT_MODEL.md), [Evaluation](docs/EVALUATION.md), [Phase 4 Report](docs/PHASE_4_REPORT.md), [Razorpay Test Verification](docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md), and [Final Security Verification](docs/FINAL_SECURITY_VERIFICATION.md).
+See [Architecture](docs/ARCHITECTURE.md), [Authority Passports](docs/AUTHORITY_PASSPORTS.md), [Passport Threat Model](docs/AUTHORITY_PASSPORT_THREAT_MODEL.md), [Threat Model](docs/THREAT_MODEL.md), [Evaluation](docs/EVALUATION.md), [Phase 4 Report](docs/PHASE_4_REPORT.md), [Razorpay Test Verification](docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md), [Final Security Verification](docs/FINAL_SECURITY_VERIFICATION.md), and the [Drunix Phase 1 design](docs/DRUNIX_PHASE1_DESIGN.md).
 
 ## Requirements & Prerequisites
 
@@ -166,6 +172,17 @@ No deployment or publication is performed by repository scripts.
 The `/passports` view issues and revokes owner-bound passports. Each new intent selects exactly one ACTIVE passport; omitted passport IDs in legacy Phase 3 service calls resolve to the seeded OfficeBot demo passport for compatibility. Passport constraints only intersect with (and can never widen) the current server policy. `UNKNOWN`, `COMMITTED`, and `CONFIRMED` usage rows continue consuming the passport budget and usage allowance; only a definite provider rejection releases a reservation.
 
 Decision receipts are signed EdDSA compact JWS statements, not payment receipts and not execution capabilities. `/api/intents/:id/proof` downloads a sanitized receipt/passport/JWK/fingerprint bundle. Offline verification proves that the configured BoundPay authority signed unchanged contents; it does not prove database completeness, host integrity, or bank settlement. See [docs/AUTHORITY_PASSPORTS.md](docs/AUTHORITY_PASSPORTS.md) and [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
+## Drunix upgrade status
+
+This `main` checkout contains the Phase 1 design and evaluation baseline; it does not contain the Drunix chaincode, client, or shared multi-service allowance. Those features are in the separately isolated `drunix-shared-authority` upgrade checkout. That implementation has a Go contract, a standard Fabric Gateway Node client experimentally exercised against Drunix v1.0.0, two separate BoundPay service processes, and a shared-authority dashboard. Its local test network proves coordination across Org1 and Org2 identities on one host, not independent governance. Payment outcomes in that demonstration are synthetic MOCK attestations, not evidence of bank settlement. See the [Phase 1 design](docs/DRUNIX_PHASE1_DESIGN.md) for the initial capability and rules review; use the upgrade checkout’s Phase 2 runbook for implementation evidence and exact reproduction steps.
+
+Project constraints for this proposal:
+
+- Describe a distinctive contribution only with dated evidence against related work; do not claim “first” or “unique” without substantiation.
+- Separate user-provided challenge labels from publicly verified event tracks. Do not claim project-reuse eligibility, API access, or NPCI/Citi affiliation without confirmation.
+- Make compilation and execution reproducible by pinning source revisions, container digests and tool versions, and recording exact clean-run commands and results.
+- Label design, mocks, local test-network results, payment TEST evidence and real payment integrations accurately. A Drunix design or test-network run does not imply a production network or payment-rail integration.
 
 ## Limitations
 
