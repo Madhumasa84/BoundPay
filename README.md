@@ -15,7 +15,7 @@ In the recorded local demonstration, two INR 2,799 requests competed for a INR 5
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TD
     Proposal["Agent or operator<br/>proposes a purchase"] --> Local["BoundPay service<br/>catalog, policy, Passport<br/>and approval checks"]
     Local --> Reserve["Drunix mandate<br/>reserve allowance"]
     Reserve -->|VALID commit + readback| Claim["One-time dispatch claim"]
