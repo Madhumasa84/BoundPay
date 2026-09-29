@@ -1,109 +1,66 @@
-# BoundPay
+# BoundPay: Shared Spending Authority for AI Agents
 
-**Shared spending authority for AI agents, demonstrated on Drunix.** BoundPay lets a model propose a catalog purchase while deterministic services control pricing, policy, human approval, budget reservation, payment dispatch, and outcome verification. An Authority Passport defines an agent's spending limits.
+BoundPay is a prototype for giving AI agents bounded purchasing authority across multiple checkout services. It combines signed spending mandates, deterministic policy checks, human approval, and a shared allowance recorded by a permissioned Drunix ledger.
 
-The original Razorpay evaluation build uses one BoundPay service and a local SQLite allowance. The isolated `drunix-shared-authority` upgrade adds a shared mandate: two separately configured services reserve against one allowance on an **actual local Drunix v1.0.0 network**. A purchase is dispatched only after its reservation and dispatch claim have both committed successfully and been read back from the ledger. The recorded two-service demonstration uses **MOCK payments**; it does not move funds.
+The model can propose a purchase, but it cannot set the catalog price, approve a transaction, reserve funds, or confirm an outcome. BoundPay services apply those controls before any configured payment adapter is called.
 
-| Capability | Status in this upgrade |
-| --- | --- |
-| Local Drunix coordination | Verified on the two-organization sample network; both organizations ran on one developer-controlled Docker host. |
-| Two-service budget race | Verified: two INR 2,799 requests competed for INR 5,000; one proceeded and one was blocked. |
-| Payment provider | MOCK in the Drunix demonstration. The Razorpay TEST adapter is available but was not exercised for this upgrade. |
-| Production or event eligibility | Unverified. No independent organizational governance, NPCI/Citi API access, or CHL-7007 rulebook is claimed. |
+## Submission overview
 
-Start with [Local setup](#setup) for the original single-service flow or [Shared authority on Drunix](#shared-authority-on-drunix) for the upgrade. [Phase 1 design](docs/DRUNIX_PHASE1_DESIGN.md) records the source review; [Phase 2 implementation](docs/DRUNIX_PHASE2_IMPLEMENTATION.md) records commands and transaction evidence; [submission readiness](docs/DRUNIX_SUBMISSION_READINESS.md) gives the acceptance review, measured local latency, track recommendation, and three-minute script.
+An agent can stay within a local spending limit and still overspend when two separate services each see enough local headroom. A second problem occurs when a payment request times out: the service cannot safely treat a missing response as proof that no payment happened.
 
-## Original single-service architecture
+BoundPay addresses these cases with a signed Authority Passport and a narrower shared mandate. Participating services reserve against one Drunix allowance. A service may dispatch only after the reservation and one-time dispatch claim have both committed as `VALID` and their state has been read back. Unknown payment outcomes keep the allowance reserved until reconciliation.
 
-This diagram describes the existing BoundPay evaluation flow. The Drunix extension adds a second, shared reservation and committed dispatch claim before provider dispatch; its state machine and trust boundaries are documented in [Phase 2](docs/DRUNIX_PHASE2_IMPLEMENTATION.md).
+In the recorded local demonstration, two INR 2,799 requests competed for a INR 5,000 shared allowance. One request was confirmed by the synthetic MOCK adapter; the other was blocked. The two organizations used the Drunix sample network on one developer-controlled host. The demonstration did not contact a payment provider or move funds.
+
+## How it works
 
 ```mermaid
-flowchart TD
-    subgraph Untrusted["UNTRUSTED BOUNDARY"]
-        Agent["AI Shopping Agent<br/>(Sarvam-105b / Natural Language)"]
-        Browser["User Browser Client<br/>(Shop / Passports / Policy UI)"]
-    end
-
-    subgraph Proposal["PROPOSAL INTAKE (No Authority)"]
-        Agent -->|Catalog item + quantity proposal| Intake["Purchase Intake API<br/>/api/agent/propose"]
-        Browser -->|Manual proposal / Scenario trigger| Intake
-        Intake --> CatalogLookup["Server-Controlled Catalog<br/>(Forces canonical price & version)"]
-    end
-
-    subgraph DeterministicCore["DETERMINISTIC BOUNDED AUTHORITY CORE"]
-        CatalogLookup --> PolicyGate["Deterministic Policy Engine<br/>• Transaction limit & Daily budget<br/>• Approved merchant & Allowed categories<br/>• Subscription block & Expiry"]
-        PolicyGate --> DecisionCheck{"Policy Check"}
-        
-        DecisionCheck -->|Blocked| BlockedReceipt["Signed Decision Receipt<br/>[BLOCKED] (JWS / Ed25519)"]
-        DecisionCheck -->|Exceeds Threshold| ApprovalGate["Exact Human Approval Gate<br/>(SHA-256 Digest Binding)"]
-        DecisionCheck -->|Auto-allowed| PassportGate
-        
-        ApprovalGate -->|Operator Rejection| RejectedReceipt["Signed Decision Receipt<br/>[DECLINED]"]
-        ApprovalGate -->|Operator Approves Exact Digest| PassportGate["Authority Passport Intersect<br/>• Ed25519 / EdDSA Signature<br/>• Agent ID & Owner Binding<br/>• Passport Budget & Max Usage<br/>• Revocation Nonce Check"]
-        
-        PassportGate -->|Revoked / Expired| PassportBlocked["Signed Decision Receipt<br/>[REVOKED / EXPIRED]"]
-        PassportGate -->|Valid Intersect| ExecClaim["SQLite Atomic Claim<br/>BEGIN IMMEDIATE<br/>• Revalidate Product Version<br/>• Revalidate Policy Version<br/>• Atomic Spend & Passport Reservation"]
-    end
-
-    subgraph ProviderBoundary["ISOLATED PROVIDER DISPATCH"]
-        ExecClaim --> ProviderRouter{"Payment Mode"}
-        ProviderRouter -->|MOCK| MockProvider["Mock Payment Adapter<br/>(Labeled Synthetic Simulation)"]
-        ProviderRouter -->|RAZORPAY_TEST| RazorpayProvider["Razorpay Test Adapter<br/>(Standard Checkout + Order API)"]
-    end
-
-    subgraph Settlement["VERIFICATION & PERSISTENCE"]
-        MockProvider --> Ledger["Spend Ledger (CONFIRMED)<br/>+ Append-Only Application Audit"]
-        RazorpayProvider --> WebhookVerify["Timing-Safe HMAC Verification<br/>(Callback / Webhook / Reconcile)"]
-        WebhookVerify --> Ledger
-    end
+flowchart LR
+    Proposal["Agent or operator<br/>proposes a purchase"] --> Local["BoundPay service<br/>catalog, policy, Passport<br/>and approval checks"]
+    Local --> Reserve["Drunix mandate<br/>reserve allowance"]
+    Reserve -->|VALID commit + readback| Claim["One-time dispatch claim"]
+    Claim -->|VALID commit + readback| Payment{"Configured adapter"}
+    Payment -->|MOCK| Mock["Synthetic payment result"]
+    Payment -->|RAZORPAY_TEST| Razorpay["Razorpay test checkout"]
+    Mock --> Outcome["Verified or unresolved outcome"]
+    Razorpay --> Outcome
+    Outcome --> Ledger["Drunix shared allowance<br/>and local audit records"]
+    Outcome -->|Unknown| Hold["Keep allowance reserved<br/>until reconciliation"]
 ```
 
-### Authorization & Execution Lifecycle
+The shared contract validates participant identity, mandate scope and limits, reservation uniqueness, revocation, and outcome permissions. The application also applies its existing deterministic policy and exact human-approval gate. A committed revocation prevents new reservations; it does not cancel a payment already dispatched.
 
-| Step | Stage | Authority Rule & Invariant | Output State |
-| :---: | :--- | :--- | :--- |
-| **1** | **Proposal Intake** | Model or user proposes product & quantity. Server strictly resolves canonical price & version from server catalog. | Proposal Created (`READY` / `NEEDS_APPROVAL`) |
-| **2** | **Policy Gate** | Evaluates integer-paise caps, daily budget, merchant allowlist, category, and subscription ban. | Auto-Allowed or Blocked (`BLOCKED`) |
-| **3** | **Human Approval** | Required if amount exceeds approval threshold. Bound cryptographically to SHA-256 digest of exact proposal. | Approved Intent (`APPROVED`) |
-| **4** | **Passport Gate** | Intersects policy with Ed25519 Authority Passport. Enforces agent bounds, quota, budget, and revocation nonce. | Validated Authority Mandate |
-| **5** | **Atomic Claim** | SQLite `BEGIN IMMEDIATE` revalidates catalog & policy versions; locks daily budget and passport allowance atomically. | Intent Claimed (`EXECUTING`) |
-| **6** | **Provider Dispatch** | Isolated route to either MOCK adapter or Razorpay TEST gateway (`createOrder`). | Order Created (`ORDER_CREATED`) |
-| **7** | **Settlement & Audit** | Timing-safe HMAC callback/webhook verification. Appends to immutable audit trail. | Confirmed Ledger (`PAYMENT_CONFIRMED`) |
+The contribution is an integrated BoundPay and Drunix prototype with commit-checked dispatch and recovery for uncertain outcomes. Shared spending limits and held reservations have prior art; this project does not claim a new or first authorization primitive. The design rationale and comparison with related work are in the [Phase 2 implementation report](docs/DRUNIX_PHASE2_IMPLEMENTATION.md#distinctive-contribution-and-prior-work).
 
+## Prototype scope
 
-## What is implemented
+The branch adds a Go chaincode contract, a Node Gateway client, a shared mandate and reservation flow, a durable dispatch and recovery outbox, and the `/shared-authority` view. It builds on BoundPay’s existing controls:
 
+- Server-owned catalog prices and deterministic transaction, merchant, category, subscription, expiry, and daily-budget checks.
+- Human approval bound to the exact purchase details.
+- Ed25519-signed, owner- and agent-bound Authority Passports with amount, budget, usage, and revocation limits.
+- Atomic SQLite reservations for each service’s local state.
+- Explicit `MOCK` and `RAZORPAY_TEST` payment modes, signed decision receipts, audit records, and reconciliation flows.
 
-- Server-owned, versioned catalog and spending policy.
-- Explicit per-purchase budget and deterministic transaction, category, merchant, subscription, expiry, and daily-budget checks.
-- Stale catalog regression guard: durably invalidates proposals if the catalog price or attributes advance before checkout, transitioning to `EXPIRED` and preserving financial isolation.
-- Human approval bound to the SHA-256 digest of exact product, quantity, price, budget, policy/catalog versions, owner, merchant, and quote expiry.
-- Atomic SQLite `BEGIN IMMEDIATE` reservation before provider dispatch; one ledger row per intent.
-- Idempotent intent/order behavior, durable `UNKNOWN` outcomes, receipt/status reconciliation, signed callback and webhook verification, webhook replay handling, and append-only application audit export.
-- Clearly separated `FIXTURE`/`LIVE_MODEL` proposal modes and `MOCK`/`RAZORPAY_TEST` payment modes.
-- Authenticated scenario controls that modify normal inputs or inject mock faults at adapter boundaries; they never set a final decision.
-- Clean, modern enterprise UI across all views (`/shop`, `/login`, `/policy`, `/activity`, `/passports`) featuring refined typography, dark glassmorphism navigation, responsive mobile layouts, and a visual authorization debugger.
-- Versioned Authority Passports: immutable Ed25519/EdDSA-signed, owner/agent-bound mandates with durable revocation, explicit merchant/category/amount/budget/usage constraints, and an atomic passport-usage ledger.
-- Signed authorization decision receipts for every deterministic outcome, offline verification/proof bundles, and a keyboard-operable visual authorization debugger.
+For a single trusted operator, one SQLite database is simpler and faster. A shared ledger is useful when separately governed participants need to enforce and inspect a common allowance. The local sample demonstrates separate identities and services, but both organizations run on one developer-controlled host; it does not demonstrate independent organizational governance.
 
-See [Architecture](docs/ARCHITECTURE.md), [Authority Passports](docs/AUTHORITY_PASSPORTS.md), [Passport Threat Model](docs/AUTHORITY_PASSPORT_THREAT_MODEL.md), [Threat Model](docs/THREAT_MODEL.md), [Evaluation](docs/EVALUATION.md), [Phase 4 Report](docs/PHASE_4_REPORT.md), [Razorpay Test Verification](docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md), [Final Security Verification](docs/FINAL_SECURITY_VERIFICATION.md), and the [Drunix Phase 1 design](docs/DRUNIX_PHASE1_DESIGN.md).
+## Run the BoundPay application
 
-## Requirements & Prerequisites
+### Requirements
 
-Also documented in [requirements.txt](requirements.txt) and [package.json](package.json).
+- Node.js 20 or later and pnpm 10 or later.
+- Chromium installed through Playwright to run the browser suite.
+- Docker, Go 1.23, and the pinned Drunix v1.0.0 source and toolchain to run the shared-ledger demonstration.
 
-| Component | Requirement | Tested Version | Notes |
-| :--- | :--- | :--- | :--- |
-| **Node.js** | `>= 20.0.0` (LTS) | `v20.20.2` | Core JavaScript runtime |
-| **Package Manager** | `pnpm >= 10.0.0` | `10.33.0` | Dependency resolution via `pnpm-lock.yaml` |
-| **Database** | SQLite 3 with WAL support | `better-sqlite3 11.8.1` | Local persistent file storage (`DATABASE_PATH`) |
-| **Operating System** | Linux, macOS, or Windows (WSL2) | Ubuntu Linux x64 | Requires POSIX-compliant filesystem for SQLite locks |
-| **Browser Engine** | Chromium | Installed via Playwright | Required for running `pnpm run test:e2e` |
-| **Cryptography** | Node `crypto` + `jose 6.2` | Built-in / `jose 6.2.11` | Ed25519 / EdDSA Authority Passport signatures |
-| **Live Model (Optional)** | `SARVAM_API_KEY` | `sarvam-105b` | Required only when `AGENT_MODE=live` (offline fixtures require no key) |
-| **Payment Gateway (Optional)** | `RAZORPAY_KEY_ID`, `_SECRET` | TEST mode (`rzp_test_*`) | Required only when `PAYMENT_ADAPTER_MODE=RAZORPAY_TEST` |
+The application was verified with Node.js `20.20.2`, pnpm `10.33.0`, Drunix `v1.0.0`, and Go `1.23.0`. See the [Phase 2 runbook](docs/DRUNIX_PHASE2_IMPLEMENTATION.md#drunix-source-versions-and-deployment) for pinned images and network requirements.
 
-## Setup
+Install Chromium before running the browser suite:
+
+```bash
+pnpm exec playwright install chromium
+```
+
+### Local setup
 
 ```bash
 cp .env.example .env
@@ -114,121 +71,71 @@ pnpm run db:seed
 pnpm run dev
 ```
 
-The CLI commands load `.env.local` before `.env`, while explicit process environment values take precedence. Generate the ignored local signing keys **before** seeding; otherwise development seeding completes without an Authority Passport. `pnpm run authority:validate` checks the configured key. Open `http://localhost:3000`. Local seed credentials are `operator` / `BoundPayPass123!`; replace `OPERATOR_INITIAL_PASSWORD` and `SESSION_SECRET` before any shared deployment.
+Open `http://localhost:3000`. The seeded local operator is `operator` with the default password configured by `OPERATOR_INITIAL_PASSWORD`; change both that password and `SESSION_SECRET` before any shared deployment. Generate the local signing keys before seeding so the demo Authority Passport can be issued. The standalone CLI loads `.env.local` before `.env`, while values already set in the process environment take precedence.
 
-Important environment values:
+The default environment uses fixture proposals and the labeled `MOCK` adapter. Live model proposals require `SARVAM_API_KEY` (or the optional OpenAI provider configuration). Razorpay requires test credentials and `PAYMENT_ADAPTER_MODE=RAZORPAY_TEST`; live Razorpay keys are rejected. See [.env.example](.env.example) for configuration.
 
-- `DATABASE_PATH`: persistent SQLite file path.
-- `AGENT_MODE=fixture|live`; live requires `SARVAM_API_KEY` (model `sarvam-105b` via `/v1/chat/completions`) or optional `OPENAI_API_KEY`.
-- `PAYMENT_ADAPTER_MODE=MOCK|RAZORPAY_TEST`; Razorpay TEST requires test key ID/secret and webhook secret. `rzp_live_` keys are rejected.
-- `QUOTE_VALIDITY_SECONDS`: exact-intent quote lifetime.
-- `AUTHORITY_SIGNING_PRIVATE_KEY` / `_FILE`: server-only Ed25519 PKCS#8 signing key. `AUTHORITY_SIGNING_PUBLIC_KEY` / `_FILE`, `AUTHORITY_SIGNING_KEY_ID`, `AUTHORITY_ISSUER`, and `AUTHORITY_AUDIENCE` are required for a configured non-test authority. Use `pnpm run authority:keys` for local files under ignored `.authority/`; never commit or log them.
-- `AUTHORITY_VERIFICATION_KEYS_JSON`: optional `kid` → public-key map for verification-key rotation. Unknown key IDs and unsupported algorithms fail closed. `AUTHORITY_TEST_MODE=true` is deterministic and test-only.
+### Run the demo
 
-Live mode never silently falls back to fixtures. Existing intents retain the adapter mode they were created with.
+For the single-service application, use the authenticated scenario runner on `/shop` and follow the [demo script](docs/DEMO_SCRIPT.md).
 
-## Demo
-
-Use the “Authenticated demo scenario runner” on Shop and follow [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md). Reset first for a predictable local demo:
+For the two-service Drunix demonstration, first prepare the pinned network and deploy the chaincode using the [Phase 2 runbook](docs/DRUNIX_PHASE2_IMPLEMENTATION.md#reproduce-the-local-network-and-chaincode). Then run:
 
 ```bash
-CONFIRM_RESET=true pnpm run db:reset
-pnpm run build
-pnpm start
-```
-
-A genuine Razorpay TEST demonstration still requires the operator to supply credentials, configure a reachable signed webhook, complete Checkout, and capture matching dashboard evidence. Do not present a mock confirmation as that evidence.
-
-## Verification commands and historical evaluation evidence
-
-```bash
-pnpm run typecheck
-pnpm run lint
-pnpm test
-pnpm run test:deterministic
-pnpm run test:state
-pnpm run test:e2e
-pnpm run build
-pnpm run eval:latency
-pnpm audit --prod
-pnpm run authority:validate
-pnpm run security:public-artifacts
-```
-
-Historical verification for release tag `boundpay-buildathon-final` (the original Razorpay evaluation build; see [Shared authority on Drunix](#shared-authority-on-drunix) for current upgrade results):
-- **Vitest**: **338/338 tests passed** across 29 files, covering Authority Passports, Ed25519/EdDSA crypto, deterministic policy evaluation, worker-process SQLite concurrency/locking, schema migrations, and stale historical-catalog regression guards.
-- **Playwright E2E**: **18/18 Chromium tests passed** across all user scenarios, unauthenticated route protection, operator login, human approval flows, Visual Authorization Debugger inspection, receipt verification, and passport lifecycle.
-- **TypeScript**: `tsc --noEmit` passed with 0 errors.
-- **ESLint**: `next lint` passed with 0 warnings and 0 errors.
-- **Public Secret Exposure**: `pnpm run security:public-artifacts` scanned 94 static/server client-facing build artifacts and confirmed 0 private keys, secrets, or tokens exposed.
-- **Fresh Clone Verification**: Documented setup (`cp .env.example .env`, `pnpm install`, `pnpm run db:migrate`, `pnpm run db:seed`, `pnpm run build`) verified clean from an isolated clone.
-
-Live model evaluation (Sarvam AI sarvam-105b): 20/20 executed, 0 skipped. Strict JSON Schema output verified with Zod business validation. 19/20 requests satisfied, 2 proposed policy violations (subscriptions) both strictly blocked by the deterministic policy gate, 0 unexpected payment provider order calls, median latency 6929 ms.
-
-Real Razorpay TEST verification: Phase 4 completed full end-to-end verification with test credentials (live Sarvam proposal, exact human approval, order `order_TYFC3NA5M8g7qI`, payment `pay_TYFqxNNBrbJRas`, ₹2,799 captured, 1 confirmed ledger row, timing-safe HMAC signature verified, authoritative provider lookup confirmed). Razorpay Test Dashboard record confirmed by operator. See [docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md](docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md) and [docs/FINAL_SECURITY_VERIFICATION.md](docs/FINAL_SECURITY_VERIFICATION.md).
-
-## Original single-service deployment preparation
-
-Build with `pnpm run build` and run with `pnpm start`. For the original SQLite-only flow, deploy exactly one application instance with a persistent volume mounted at `DATABASE_PATH`; its local allowance is not a shared multi-instance design. The Drunix demo uses two separately configured service instances with distinct SQLite files and ledger identities, as described below. Use HTTPS, strong environment-only secrets, `Secure` cookies (`NODE_ENV=production`), and a public HTTPS Razorpay webhook URL when exercising TEST payments. Run migrations before start and back up persistent data. Re-run auth, webhook, payment, and browser smoke tests in any deployed environment.
-
-No deployment or publication is performed by repository scripts.
-
-## Authority Passport quick start
-
-The `/passports` view issues and revokes owner-bound passports. Each new intent selects exactly one ACTIVE passport; omitted passport IDs in legacy Phase 3 service calls resolve to the seeded OfficeBot demo passport for compatibility. Passport constraints only intersect with (and can never widen) the current server policy. `UNKNOWN`, `COMMITTED`, and `CONFIRMED` usage rows continue consuming the passport budget and usage allowance; only a definite provider rejection releases a reservation.
-
-Decision receipts are signed EdDSA compact JWS statements, not payment receipts and not execution capabilities. `/api/intents/:id/proof` downloads a sanitized receipt/passport/JWK/fingerprint bundle. Offline verification proves that the configured BoundPay authority signed unchanged contents; it does not prove database completeness, host integrity, or bank settlement. See [docs/AUTHORITY_PASSPORTS.md](docs/AUTHORITY_PASSPORTS.md) and [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
-
-## Shared authority on Drunix
-
-The upgrade adds a Go chaincode contract, an experimentally compatible Node Gateway client, a shared Passport-bound mandate, a recovery outbox, and a `/shared-authority` view. The contract checks participant identity, mandate terms, remaining allowance, reservation uniqueness, revocation, and outcome permissions. BoundPay also applies its existing deterministic policy and exact local approval gate. A direct chaincode caller with participant credentials can bypass those *application-only* gates, so participant deployments remain part of the trust boundary.
-
-| Event | Shared behavior |
-| --- | --- |
-| Issue | The Passport issuer creates one mandate no broader than the signed Passport, with named participants and outcome verifiers. |
-| Reserve | Each participant reserves an intent against the same atomic allowance. Conflicting ledger commits cannot both consume the remaining budget. |
-| Dispatch | The executor waits for a `VALID` reservation commit and readback, then a `VALID` one-time dispatch-claim commit and readback before calling its payment adapter. |
-| Resolve | A named verifier records a success or definitive failure. An unknown provider result retains the reservation until reconciliation. |
-| Revoke | A committed revocation blocks new reservations. Existing reservations and dispatched payments still require resolution. |
-
-The local demo runs **real Drunix ledger transactions** with Org1 and Org2 credentials and **synthetic MOCK payment outcomes**. It does not demonstrate independent organizational governance or real payment settlement. `SHARED_AUTHORITY_MODE=DRUNIX` is the only network-backed shared mode; an outage or failed commit blocks dispatch. `SHARED_AUTHORITY_MODE=SIMULATED` is a visible, non-dispatching label and is never used as a silent fallback. Payment mode remains explicit (`MOCK` or `RAZORPAY_TEST`).
-
-### Reproduce the two-service mock-payment demo
-
-Use Drunix `v1.0.0` and the pinned toolchain, images, identity paths, environment variables, and deployment commands in the [Phase 2 runbook](docs/DRUNIX_PHASE2_IMPLEMENTATION.md#drunix-source-versions-and-deployment). Once the sample network and `boundpay-shared-authority` chaincode are deployed, run:
-
-```bash
-pnpm install --frozen-lockfile
 pnpm run build
 pnpm run shared-authority:drunix-demo
 pnpm run shared-authority:drunix-app-demo
 ```
 
-The app demo starts two production-mode BoundPay processes with distinct sample-network identities and SQLite files. It exercises a competing purchase, service restart, provider timeout, reconciliation, and a pre-dispatch ledger outage. The mock adapter is labeled in the UI; `/shared-authority` shows allowance, reserved and settled totals, revocation, payment state, and ledger confirmation. `UNKNOWN` means the reservation remains held; a timeout alone never releases it. The runbook also gives network cleanup steps. Do not use this demo as evidence of a Razorpay TEST transaction or a bank transfer.
+The app demo starts two production-mode BoundPay services with separate SQLite files and Drunix identities. It exercises competing reservations, restart recovery, an unknown payment result, and a pre-dispatch ledger outage. Its payment adapter is MOCK. The demo does not evidence Razorpay settlement or a bank transfer. Set `DRUNIX_DEMO_REVIEW_SECONDS=90` before the app-demo command to leave the local dashboards open for review.
 
-Set `DRUNIX_DEMO_REVIEW_SECONDS=90` to hold the two local dashboards open after the run. Set `DRUNIX_DEMO_AMBIGUOUS_FAULT=SIMULATE_RESPONSE_LOSS` for a second mock scenario in which an order is created before its response is lost; restart still blocks redispatch and retains the hold. The test services use separate application signing keys and share public verification keys, while the sample outcome-verifier credential remains available to both services. The direct contract demo also supports `node scripts/drunix-shared-authority-demo.mjs --inspect-mandate <id>` for a named verifier to read back committed evidence.
+## Verification
 
-### Verification and scope
+The working tree was verified on 2026-09-29:
 
-On this upgrade branch, `pnpm test` passed **343/343** tests across 31 files; a fresh Git clone of local commit `7a3b54d` passed offline frozen-lockfile installation, key generation, migration, seed, signing-config validation, build and the pinned Go chaincode test on 2026-09-27. Type checking and linting passed on the same committed source. The fresh `boundpay-review` channel accepted chaincode version `1.2`, lifecycle sequence `1`, with Org1/Org2 approvals; real network demos passed against it. The [submission review](docs/DRUNIX_SUBMISSION_READINESS.md#measured-local-result) reports nine observed successful reserve timings across three local runs. The Phase 2 record includes actual transaction IDs. The migration test uses a synthetic historical-schema fixture, so a fresh checkout does not need an ignored developer SQLite database.
+| Check | Result |
+| --- | --- |
+| Vitest | 347/347 tests passed across 32 files. |
+| Playwright | 18/18 Chromium scenarios passed using MOCK payments. |
+| Concurrency stress | 7/7 tests passed in the dedicated 25-round worker-process run. |
+| Go chaincode | `go test -mod=vendor -race -count=1 ./...` passed in the pinned Go 1.23.0 container. |
+| TypeScript, lint, production build | Passed. |
+| Authority config and public-artifact scan | Passed; 104 build files scanned with no configured secrets found. |
+| Production dependency audit | No known vulnerabilities after updating Next.js to `15.5.24` and `@grpc/grpc-js` to `1.14.4`. |
+| Frozen install | `pnpm install --offline --frozen-lockfile` passed. |
 
-Drunix v1.0.0's official repository does not establish a supported external TypeScript SDK or a client compatibility guarantee; the Gateway client is an observed local integration. Chaincode does not enforce Passport wall-clock expiry or prove that a human approved the local intent. A verifier attests to a payment outcome; Drunix does not independently prove settlement. Razorpay TEST was not used in the Drunix run, and no exactly-once provider execution is claimed. An official CHL-7007 rulebook, reuse eligibility, API access, submission stages, and final deadline remain unverified. See [Phase 2 limitations](docs/DRUNIX_PHASE2_IMPLEMENTATION.md#acceptance-checklist-and-remaining-limitations) before extending this beyond the local demo.
+The browser E2E suite and chaincode tests passed in this verification run. The ledger-backed two-service demo was last run on 2026-09-27 and was not repeated in the 2026-09-29 environment because Docker API access was unavailable. The current checks therefore do not establish a fresh ledger-backed payment race. See the [Phase 2 report](docs/DRUNIX_PHASE2_IMPLEMENTATION.md) for prior transaction evidence and the [submission readiness review](docs/DRUNIX_SUBMISSION_READINESS.md) for measured results and the three-minute presentation script.
 
-Among the publicly listed tracks, **Real-Time Payments** is the strongest evidenced fit because the upgrade coordinates pre-dispatch authority and uncertain payment outcomes. It does not implement a payment rail. The user-provided “Innovative Fintech Ideas” / `CHL-7007` label remains unverified in accessible event material; if the organizer portal offers that track, confirm its rules before selecting it. This build does not claim asset tokenization, cross-border remittances, or financial inclusion features.
+To rerun the application checks:
 
-Project constraints for this proposal:
+```bash
+pnpm run typecheck
+pnpm run lint
+pnpm test
+pnpm run test:stress
+pnpm run test:e2e
+pnpm run build
+pnpm audit --prod
+pnpm run authority:validate
+pnpm run security:public-artifacts
+```
 
-- Describe a distinctive contribution only with dated evidence against related work; do not claim “first” or “unique” without substantiation.
-- Separate user-provided challenge labels from publicly verified event tracks. Do not claim project-reuse eligibility, API access, or NPCI/Citi affiliation without confirmation.
-- Make compilation and execution reproducible by pinning source revisions, container digests and tool versions, and recording exact clean-run commands and results.
-- Label design, mocks, local test-network results, payment TEST evidence and real payment integrations accurately. A Drunix design or test-network run does not imply a production network or payment-rail integration.
+## Trust boundaries and limitations
 
-## Limitations
+- The sample network uses two organizations on one developer-controlled host. It is not evidence of independent governance or a production Drunix deployment.
+- Participants with direct chaincode credentials are trusted to follow the BoundPay service’s local human-approval and daily-policy checks. The contract cannot prove those application-level checks or trusted wall-clock Passport expiry.
+- The outcome verifier attests to a payment result; the ledger is not a payment network or proof of bank settlement.
+- A timeout does not provide exactly-once payment execution. An uncertain attempt retains its allowance and requires same-attempt reconciliation or operator review.
+- Razorpay TEST is available in the existing application, but it was not used in the Drunix demonstrations. The historical Razorpay verification applies to the earlier single-service evaluation build.
+- This prototype does not claim power-loss durability, production readiness, real-time payment-rail integration, or independent operator governance.
 
-- The original evaluation flow supports one operator, one approved merchant, one currency, and one application instance; the Drunix sample demonstrates two configured instances under one developer-controlled host.
-- No claim of power-loss or storage-corruption durability.
-- The audit is append-only through the application, not tamper-proof against a database administrator.
-- The policy gate constrains explicit attributes; a model can still make an undesirable choice that technically satisfies policy.
-- The historical live-model set is small and was not rerun for this Drunix upgrade; it cannot establish general prompt-injection immunity.
-- Browser automation does not complete third-party Razorpay Checkout.
-- The original authority signs with one issuer key; the local Drunix sample's two identities do not establish independent issuer or network governance.
+## Further reading
+
+- [Submission readiness and demo script](docs/DRUNIX_SUBMISSION_READINESS.md)
+- [Phase 1 design and platform review](docs/DRUNIX_PHASE1_DESIGN.md)
+- [Phase 2 implementation, runbook, and transaction evidence](docs/DRUNIX_PHASE2_IMPLEMENTATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Authority Passports](docs/AUTHORITY_PASSPORTS.md) and [Passport threat model](docs/AUTHORITY_PASSPORT_THREAT_MODEL.md)
+- [Application threat model](docs/THREAT_MODEL.md)
+- [Evaluation methodology](docs/EVALUATION.md)
+- [Historical Razorpay TEST verification](docs/PHASE_4_RAZORPAY_TEST_VERIFICATION.md)

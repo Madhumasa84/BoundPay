@@ -1,24 +1,11 @@
 import fs from 'fs';
 import path from 'path';
+import { loadCliEnv } from '../src/infrastructure/config/load-cli-env';
 
 const SECRET_NAMES = [
   'AUTHORITY_SIGNING_PRIVATE_KEY', 'RAZORPAY_KEY_SECRET',
   'RAZORPAY_WEBHOOK_SECRET', 'SARVAM_API_KEY', 'SESSION_SECRET',
 ] as const;
-
-function localEnvValues(): Record<string, string> {
-  const values: Record<string, string> = {};
-  const envPath = path.resolve(process.cwd(), '.env.local');
-  if (!fs.existsSync(envPath)) return values;
-  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-    const match = line.match(/^([A-Z][A-Z0-9_]*)=(.*)$/);
-    if (!match) continue;
-    let value = match[2].trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
-    values[match[1]] = value.replace(/\\n/g, '\n');
-  }
-  return values;
-}
 
 function collectFiles(root: string): string[] {
   if (!fs.existsSync(root)) return [];
@@ -31,17 +18,21 @@ function collectFiles(root: string): string[] {
   return files;
 }
 
-const dotenv = localEnvValues();
+loadCliEnv();
 const publicFiles = [
   ...collectFiles(path.resolve(process.cwd(), '.next/static')),
   ...collectFiles(path.resolve(process.cwd(), '.next/server/app'))
     .filter((file) => !file.endsWith('.js') && !file.endsWith('.map')),
 ];
+if (publicFiles.length === 0) {
+  console.error('No public build artifacts found. Run pnpm run build before scanning.');
+  process.exit(1);
+}
 let foundAny = false;
 for (const name of SECRET_NAMES) {
-  let value = process.env[name] || dotenv[name] || '';
+  let value = process.env[name] || '';
   if (name === 'AUTHORITY_SIGNING_PRIVATE_KEY' && !value) {
-    const fileName = process.env.AUTHORITY_SIGNING_PRIVATE_KEY_FILE || dotenv.AUTHORITY_SIGNING_PRIVATE_KEY_FILE;
+    const fileName = process.env.AUTHORITY_SIGNING_PRIVATE_KEY_FILE;
     if (fileName) {
       try { value = fs.readFileSync(path.resolve(process.cwd(), fileName), 'utf8').trim(); } catch {}
     }

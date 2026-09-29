@@ -41,7 +41,7 @@
     }
   },
   "dependencies": {
-    "@grpc/grpc-js": "1.14.0",
+    "@grpc/grpc-js": "1.14.4",
     "@hyperledger/fabric-gateway": "1.10.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^11.8.1",
@@ -49,7 +49,7 @@
     "drizzle-orm": "^0.45.2",
     "jose": "^6.2.11",
     "lucide-react": "^1.39.0",
-    "next": "15.5.21",
+    "next": "15.5.24",
     "openai": "^7.9.0",
     "razorpay": "^2.9.8",
     "react": "18.3.1",
