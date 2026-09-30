@@ -1,4 +1,5 @@
 import { ExecutionService } from '@/services/execution.service';
+import { errorResponse, readTextBody } from '@/app/api/api-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,14 +19,7 @@ export async function POST(req: Request) {
     }
 
     // Read exact raw body text without parsing or mutating whitespace
-    const rawBody = await req.text();
-
-    if (rawBody.length > MAX_WEBHOOK_PAYLOAD_BYTES) {
-      return new Response(JSON.stringify({ error: 'Payload exceeds size limit' }), {
-        status: 413,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const rawBody = await readTextBody(req, MAX_WEBHOOK_PAYLOAD_BYTES);
 
     const executionService = new ExecutionService();
     const result = await executionService.handleRazorpayWebhook(rawBody, signature, eventIdHeader);
@@ -42,10 +36,7 @@ export async function POST(req: Request) {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: 'Webhook processing error', details: err.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  } catch (err) {
+    return errorResponse(err);
   }
 }

@@ -10,6 +10,40 @@ describe('Razorpay Test Adapter Contract & Security Tests', () => {
   const validKeySecret = 'test_mockKeySecret456';
   const validWebhookSecret = 'test_webhookSecret789';
 
+  it('does not report capture when an order status response belongs to another order', async () => {
+    const adapter = new RazorpayTestAdapter({ keyId: validKeyId, keySecret: validKeySecret,
+      customFetch: async () => ({ ok: true, json: async () => ({ items: [{ id: 'pay_other', order_id: 'order_other', status: 'captured', amount: 149900, currency: 'INR' }] }) }) as Response,
+    });
+    expect((await adapter.getOrderStatus('order_expected')).status).toBe('UNKNOWN');
+  });
+
+  it('does not bind receipt reconciliation to an unrelated search result', async () => {
+    const urls: string[] = [];
+    const adapter = new RazorpayTestAdapter({ keyId: validKeyId, keySecret: validKeySecret,
+      customFetch: async (url) => {
+        urls.push(String(url));
+        return { ok: true, json: async () => ({ items: [{ id: 'order_other', receipt: 'receipt_other' }] }) } as Response;
+      },
+    });
+    expect(await adapter.reconcileOrderByReceipt('receipt_expected')).toBeNull();
+    expect(urls).toHaveLength(1);
+  });
+
+  it('resolves an exact receipt match even if an unrelated result appears first', async () => {
+    const urls: string[] = [];
+    const adapter = new RazorpayTestAdapter({ keyId: validKeyId, keySecret: validKeySecret,
+      customFetch: async (url) => {
+        urls.push(String(url));
+        return { ok: true, json: async () => urls.length === 1
+          ? { items: [{ id: 'order_other', receipt: 'receipt_other' }, { id: 'order_expected', receipt: 'receipt_expected' }] }
+          : { items: [{ id: 'pay_expected', order_id: 'order_expected', status: 'captured', amount: 149900, currency: 'INR' }] },
+        } as Response;
+      },
+    });
+    expect((await adapter.reconcileOrderByReceipt('receipt_expected'))?.paymentId).toBe('pay_expected');
+    expect(urls[1]).toContain('/orders/order_expected/payments');
+  });
+
   describe('Credential Validation and Live-Key Protection', () => {
     it('Strictly rejects live-mode key ID (rzp_live_...)', () => {
       expect(() => {

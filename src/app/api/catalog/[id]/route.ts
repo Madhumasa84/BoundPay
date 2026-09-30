@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getProductById, updateProduct } from '@/services/catalog.service';
-import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, requireAuth, readJsonBody } from '@/app/api/api-helpers';
 
 export const runtime = 'nodejs';
 
@@ -32,7 +32,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const validated = UpdateProductSchema.parse(body);
     const updated = updateProduct(id, validated, auth.operator.operatorId);
     return jsonResponse({ product: updated });

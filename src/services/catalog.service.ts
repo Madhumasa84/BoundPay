@@ -46,27 +46,30 @@ export function addProduct(
   operatorId: string,
   clock: Clock = defaultClock
 ): Product {
-  const { db } = getDb();
-  const nowIso = clock.nowIso();
+  const validated = ProductInputSchema.parse(input);
+  const { db, sqlite } = getDb();
+  return sqlite.transaction(() => {
+    const nowIso = clock.nowIso();
 
-  const product: Product = {
-    ...input,
-    version: 1,
-    is_active: true,
-    updated_at: nowIso,
-  };
+    const product: Product = {
+      ...validated,
+      version: 1,
+      is_active: true,
+      updated_at: nowIso,
+    };
 
-  db.insert(schema.products).values(product).run();
+    db.insert(schema.products).values(product).run();
 
-  appendAuditEvent({
-    eventType: 'CATALOG_PRODUCT_ADDED',
-    operatorId,
-    amountPaise: product.unit_price_paise,
-    payload: { product },
-    clock,
-  });
+    appendAuditEvent({
+      eventType: 'CATALOG_PRODUCT_ADDED',
+      operatorId,
+      amountPaise: product.unit_price_paise,
+      payload: { product },
+      clock,
+    });
 
-  return product;
+    return product;
+  }).immediate();
 }
 
 export function updateProduct(
@@ -75,52 +78,54 @@ export function updateProduct(
   operatorId: string,
   clock: Clock = defaultClock
 ): Product {
-  const { db } = getDb();
+  const { db, sqlite } = getDb();
   // Keep direct service callers on the same trusted integer/shape boundary as
   // the HTTP route.  Catalog values are later used for authorization and must
   // never admit unsafe or fractional paise through an internal call path.
   const validatedUpdates = ProductInputSchema.partial().omit({ id: true, currency: true }).parse(updates);
-  const existing = getProductById(id);
-  if (!existing) {
-    throw new Error(`Product with ID '${id}' not found`);
-  }
+  return sqlite.transaction(() => {
+    const existing = getProductById(id);
+    if (!existing) {
+      throw new Error(`Product with ID '${id}' not found`);
+    }
 
-  const nowIso = clock.nowIso();
-  const newVersion = existing.version + 1;
+    const nowIso = clock.nowIso();
+    const newVersion = existing.version + 1;
 
-  const updated: Product = {
-    ...existing,
-    ...validatedUpdates,
-    version: newVersion,
-    updated_at: nowIso,
-  };
-
-  db.update(schema.products)
-    .set({
-      name: updated.name,
-      description: updated.description,
-      unit_price_paise: updated.unit_price_paise,
-      category: updated.category,
-      is_subscription: updated.is_subscription,
-      merchant_id: updated.merchant_id,
+    const updated: Product = {
+      ...existing,
+      ...validatedUpdates,
       version: newVersion,
       updated_at: nowIso,
-    })
-    .where(eq(schema.products.id, id))
-    .run();
+    };
 
-  appendAuditEvent({
-    eventType: 'CATALOG_PRODUCT_UPDATED',
-    operatorId,
-    amountPaise: updated.unit_price_paise,
-    payload: {
-      productId: id,
-      previousVersion: existing.version,
-      newVersion,
-      changes: validatedUpdates,
-    },
-    clock,
-  });
+    db.update(schema.products)
+      .set({
+        name: updated.name,
+        description: updated.description,
+        unit_price_paise: updated.unit_price_paise,
+        category: updated.category,
+        is_subscription: updated.is_subscription,
+        merchant_id: updated.merchant_id,
+        version: newVersion,
+        updated_at: nowIso,
+      })
+      .where(eq(schema.products.id, id))
+      .run();
 
-  return updated;
+    appendAuditEvent({
+      eventType: 'CATALOG_PRODUCT_UPDATED',
+      operatorId,
+      amountPaise: updated.unit_price_paise,
+      payload: {
+        productId: id,
+        previousVersion: existing.version,
+        newVersion,
+        changes: validatedUpdates,
+      },
+      clock,
+    });
+
+    return updated;
+  }).immediate();
 }

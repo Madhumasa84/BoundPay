@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, requireAuth, readJsonBody } from '@/app/api/api-helpers';
 import { defaultExecutionService } from '@/services/execution.service';
 
 export const runtime = 'nodejs';
@@ -23,7 +23,7 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const validated = ConfirmPaymentBodySchema.parse(body);
 
     const paymentId = validated.razorpay_payment_id || validated.paymentId;

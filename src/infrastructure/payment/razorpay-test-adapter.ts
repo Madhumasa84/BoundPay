@@ -234,7 +234,7 @@ export class RazorpayTestAdapter implements PaymentAdapter {
       const paymentData = (await response.json()) as any;
 
       // 3. Verify order association, amount, and currency
-      if (paymentData.order_id !== params.orderId) {
+      if (paymentData.id !== params.paymentId || paymentData.order_id !== params.orderId) {
         return {
           isMock: false,
           success: false,
@@ -242,7 +242,7 @@ export class RazorpayTestAdapter implements PaymentAdapter {
           orderId: params.orderId,
           status: 'FAILED',
           rawResponse: paymentData,
-          errorMessage: `Payment order ID mismatch: expected ${params.orderId}, got ${paymentData.order_id}`,
+          errorMessage: 'Payment ID or order ID does not match the verified checkout callback',
         };
       }
 
@@ -334,6 +334,9 @@ export class RazorpayTestAdapter implements PaymentAdapter {
       // Check for captured payment
       const capturedPayment = payments.find((p) => p.status === 'captured');
       if (capturedPayment) {
+        if (capturedPayment.order_id !== orderId || typeof capturedPayment.id !== 'string' || !capturedPayment.id) {
+          return { isMock: false, orderId, status: 'UNKNOWN', amountPaise: 0, currency: 'INR', rawResponse: capturedPayment };
+        }
         return {
           isMock: false,
           orderId,
@@ -397,7 +400,10 @@ export class RazorpayTestAdapter implements PaymentAdapter {
       const orders = data.items || [];
       if (orders.length === 0) return null;
 
-      const order = orders[0];
+      const matches = orders.filter((order) => order.receipt === receipt && typeof order.id === 'string' && order.id);
+      // An ambiguous or unrelated search result cannot establish order binding.
+      if (matches.length !== 1) return null;
+      const order = matches[0];
       return this.getOrderStatus(order.id);
     } catch {
       return null;

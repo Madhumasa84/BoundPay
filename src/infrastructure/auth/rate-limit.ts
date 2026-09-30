@@ -23,37 +23,42 @@ export function checkLoginRateLimit(identifier: string): { locked: boolean; lock
 }
 
 export function recordFailedLogin(identifier: string): void {
-  const { db } = getDb();
-  const now = new Date();
-  const nowIso = now.toISOString();
+  const { db, sqlite } = getDb();
+  sqlite.transaction(() => {
+    const now = new Date();
+    const nowIso = now.toISOString();
 
-  const attempt = db.select().from(schema.loginAttempts).where(eq(schema.loginAttempts.identifier, identifier)).get();
+    const attempt = db.select().from(schema.loginAttempts).where(eq(schema.loginAttempts.identifier, identifier)).get();
 
-  if (!attempt) {
-    db.insert(schema.loginAttempts).values({
-      identifier,
-      consecutive_failures: 1,
-      locked_until: null,
-      updated_at: nowIso,
-    }).run();
-    return;
-  }
+    if (!attempt) {
+      db.insert(schema.loginAttempts).values({
+        identifier,
+        consecutive_failures: 1,
+        locked_until: null,
+        updated_at: nowIso,
+      }).run();
+      return;
+    }
 
-  const newFailures = attempt.consecutive_failures + 1;
-  let lockedUntil: string | null = null;
+    // Requests already in flight must not extend an existing lockout.
+    if (attempt.locked_until && now < new Date(attempt.locked_until)) return;
+    const lockoutExpired = attempt.locked_until !== null && now >= new Date(attempt.locked_until);
+    const newFailures = lockoutExpired ? 1 : attempt.consecutive_failures + 1;
+    let lockedUntil: string | null = null;
 
-  if (newFailures >= MAX_FAILED_ATTEMPTS) {
-    lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_SECONDS * 1000).toISOString();
-  }
+    if (newFailures >= MAX_FAILED_ATTEMPTS) {
+      lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_SECONDS * 1000).toISOString();
+    }
 
-  db.update(schema.loginAttempts)
-    .set({
-      consecutive_failures: newFailures,
-      locked_until: lockedUntil,
-      updated_at: nowIso,
-    })
-    .where(eq(schema.loginAttempts.identifier, identifier))
-    .run();
+    db.update(schema.loginAttempts)
+      .set({
+        consecutive_failures: newFailures,
+        locked_until: lockedUntil,
+        updated_at: nowIso,
+      })
+      .where(eq(schema.loginAttempts.identifier, identifier))
+      .run();
+  }).immediate();
 }
 
 export function recordSuccessfulLogin(identifier: string): void {

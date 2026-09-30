@@ -8,6 +8,7 @@ import { PassportNotFoundError, PassportValidationError } from '../../services/p
 import { PaymentModeConfigurationError } from '../../domain/intent';
 import { SharedAuthorityConfigurationError } from '../../infrastructure/shared-authority/config';
 import { SharedAuthorityDeniedError, SharedAuthorityPendingError } from '../../services/shared-authority.service';
+import { PolicyConflictError } from '../../services/policy.service';
 
 export class PayloadTooLargeError extends Error {
   constructor(message = 'Request payload exceeds the permitted size') {
@@ -23,17 +24,51 @@ export class UnsupportedMediaTypeError extends Error {
   }
 }
 
-/** Read JSON with a body-size limit even when a client omits Content-Length. */
-export async function readJsonBody(req: Request, maxBytes = 128 * 1024): Promise<unknown> {
+/** Read text with a byte limit even when a client omits Content-Length. */
+export async function readTextBody(req: Request, maxBytes = 128 * 1024): Promise<string> {
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  if (req.body) {
+    const reader = req.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > maxBytes) {
+          // Cancellation failure must not replace the controlled 413 response.
+          await reader.cancel().catch(() => {});
+          throw new PayloadTooLargeError();
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks, totalBytes));
+}
+
+function parseJsonBody(req: Request, body: string): unknown {
   const mediaType = (req.headers.get('content-type') || '').split(';', 1)[0].trim().toLowerCase();
   if (mediaType !== 'application/json') throw new UnsupportedMediaTypeError();
-  const body = await req.text();
-  if (Buffer.byteLength(body, 'utf8') > maxBytes) throw new PayloadTooLargeError();
   try {
     return JSON.parse(body);
   } catch {
     throw new ZodError([{ code: 'custom', path: [], message: 'Malformed JSON body' }]);
   }
+}
+
+export async function readJsonBody(req: Request, maxBytes = 128 * 1024): Promise<unknown> {
+  const mediaType = (req.headers.get('content-type') || '').split(';', 1)[0].trim().toLowerCase();
+  if (mediaType !== 'application/json') throw new UnsupportedMediaTypeError();
+  return parseJsonBody(req, await readTextBody(req, maxBytes));
+}
+
+/** Optional bodies may be empty; present bodies must satisfy JSON validation. */
+export async function readOptionalJsonBody(req: Request, maxBytes = 128 * 1024): Promise<unknown> {
+  const body = await readTextBody(req, maxBytes);
+  return body.length === 0 ? {} : parseJsonBody(req, body);
 }
 
 export function jsonResponse(data: unknown, status = 200, headers: HeadersInit = {}): NextResponse {
@@ -67,7 +102,7 @@ export function errorResponse(error: unknown, status = 500): NextResponse {
     );
   }
 
-  if (error instanceof ConflictError || error instanceof StateConflictError) {
+  if (error instanceof ConflictError || error instanceof StateConflictError || error instanceof PolicyConflictError) {
     return jsonResponse(
       { error: 'Conflict', message: error.message },
       409

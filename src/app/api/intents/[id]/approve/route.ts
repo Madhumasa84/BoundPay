@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { approveIntent } from '@/services/purchase.service';
-import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, requireAuth, readOptionalJsonBody } from '@/app/api/api-helpers';
 
 export const runtime = 'nodejs';
 
@@ -14,16 +14,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const { id } = await params;
-    let notes: string | undefined;
-    try {
-      const body = await req.json();
-      const parsed = ApproveSchema.parse(body);
-      notes = parsed.notes;
-    } catch {
-      // Empty body is allowed
-    }
+    const parsed = ApproveSchema.parse(await readOptionalJsonBody(req));
 
-    const updatedIntent = approveIntent(id, auth.operator.operatorId, notes);
+    const updatedIntent = approveIntent(id, auth.operator.operatorId, parsed.notes);
     return jsonResponse({ intent: updatedIntent });
   } catch (err) {
     return errorResponse(err);

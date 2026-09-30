@@ -26,7 +26,7 @@ export const PolicyUpdateSchema = z.object({
   allow_subscriptions: z.boolean(),
   expires_at: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid ISO date string for expires_at',
-  }),
+  }).transform((val) => new Date(val).toISOString()),
 }).refine((data) => data.approval_threshold_paise <= data.max_transaction_amount_paise, {
   message: 'Approval threshold cannot exceed the maximum transaction limit',
   path: ['approval_threshold_paise'],

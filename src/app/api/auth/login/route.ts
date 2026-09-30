@@ -2,10 +2,10 @@ import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { getDb, schema } from '@/infrastructure/db';
 import { verifyPassword } from '@/infrastructure/auth/password';
-import { buildSessionCookie, createOperatorSession } from '@/infrastructure/auth/session';
+import { buildSessionCookie, createOperatorSession, validateSameOrigin } from '@/infrastructure/auth/session';
 import { checkLoginRateLimit, recordFailedLogin, recordSuccessfulLogin } from '@/infrastructure/auth/rate-limit';
 import { appendAuditEvent } from '@/services/audit.service';
-import { errorResponse, jsonResponse } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, readJsonBody } from '@/app/api/api-helpers';
 
 export const runtime = 'nodejs';
 
@@ -15,12 +15,17 @@ const LoginSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  if (!validateSameOrigin(req)) {
+    return jsonResponse({ error: 'Forbidden', message: 'Cross-origin request rejected' }, 403);
+  }
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const { username, password } = LoginSchema.parse(body);
 
     const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
-    const rateLimitKey = `${username}:${ip}`;
+    // The forwarded IP header can be supplied by a client unless a trusted
+    // proxy strips it. Account lockout must not depend on that header.
+    const rateLimitKey = username;
 
     const rateLimit = checkLoginRateLimit(rateLimitKey);
     if (rateLimit.locked) {

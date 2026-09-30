@@ -374,86 +374,91 @@ export function approveIntent(
   notes?: string,
   clock: Clock = defaultClock
 ): PurchaseIntent {
-  const { db } = getDb();
-  const intent = getIntentById(intentId, operatorId);
-  if (!intent) {
-    throw new NotFoundError(`Purchase intent '${intentId}' not found`);
-  }
+  const { db, sqlite } = getDb();
+  const result = sqlite.transaction(() => {
+    const intent = getIntentById(intentId, operatorId);
+    if (!intent) {
+      throw new NotFoundError(`Purchase intent '${intentId}' not found`);
+    }
 
-  if (intent.state !== IntentStates.NEEDS_APPROVAL) {
-    throw new Error(`Cannot approve intent in state '${intent.state}' (must be 'NEEDS_APPROVAL')`);
-  }
+    if (intent.state !== IntentStates.NEEDS_APPROVAL) {
+      throw new ConflictError(`Cannot approve intent in state '${intent.state}' (must be 'NEEDS_APPROVAL')`);
+    }
 
-  const nowIso = clock.nowIso();
-  if (nowIso >= intent.quote_expiry) {
+    const nowIso = clock.nowIso();
+    if (nowIso >= intent.quote_expiry) {
+      db.update(schema.purchaseIntents)
+        .set({ state: IntentStates.EXPIRED, failure_reason: 'Quote expired before approval', updated_at: nowIso })
+        .where(eq(schema.purchaseIntents.id, intentId))
+        .run();
+      // Commit the expiry transition before returning the conflict to the caller.
+      return new ConflictError(`Quote expired at ${intent.quote_expiry}`);
+    }
+
+    // Revalidate that product or policy haven't changed since proposal
+    const currentProduct = getProductById(intent.product_id);
+    const currentPolicy = getCurrentPolicy();
+    if (!currentProduct || currentProduct.version !== intent.product_version) {
+      throw new Error('Product price or attributes changed after proposal; approval rejected');
+    }
+    if (currentPolicy.version !== intent.policy_version) {
+      throw new Error('Spending policy changed after proposal; approval rejected');
+    }
+
+    if (intent.passport_id) {
+      const passport = getPassportById(intent.passport_id, operatorId, nowIso);
+      if (!passport) throw new Error('Authority passport not found; approval rejected');
+      try {
+        verifyStoredPassport(passport, operatorId, intent.agent_id || undefined, nowIso);
+      } catch {
+        throw new Error('Authority passport signature or owner binding failed; approval rejected');
+      }
+      if (passport.status === 'REVOKED') throw new Error('Authority passport has been revoked; approval rejected');
+      if (passport.status === 'EXPIRED' || nowIso >= passport.payload.expiresAt || nowIso < passport.payload.validFrom) throw new Error('Authority passport is not active; approval rejected');
+    }
+
+    assertValidTransition(intent.state, IntentStates.APPROVED);
+
+    // Store exact approval record bound to canonical hash
+    const approvalId = crypto.randomUUID();
+    db.insert(schema.intentApprovals).values({
+      id: approvalId,
+      intent_id: intentId,
+      operator_id: operatorId,
+      canonical_hash: intent.canonical_request_hash,
+      status: 'APPROVED',
+      notes: notes || null,
+      approved_at: nowIso,
+    }).run();
+
     db.update(schema.purchaseIntents)
-      .set({ state: IntentStates.EXPIRED, failure_reason: 'Quote expired before approval', updated_at: nowIso })
+      .set({ state: IntentStates.APPROVED, updated_at: nowIso })
       .where(eq(schema.purchaseIntents.id, intentId))
       .run();
-    throw new Error(`Quote expired at ${intent.quote_expiry}`);
-  }
 
-  // Revalidate that product or policy haven't changed since proposal
-  const currentProduct = getProductById(intent.product_id);
-  const currentPolicy = getCurrentPolicy();
-  if (!currentProduct || currentProduct.version !== intent.product_version) {
-    throw new Error('Product price or attributes changed after proposal; approval rejected');
-  }
-  if (currentPolicy.version !== intent.policy_version) {
-    throw new Error('Spending policy changed after proposal; approval rejected');
-  }
+    appendAuditEvent({
+      eventType: 'INTENT_APPROVED',
+      intentId,
+      operatorId,
+      amountPaise: intent.total_amount_paise,
+      stateBefore: intent.state,
+      stateAfter: IntentStates.APPROVED,
+      payload: {
+        canonicalHash: intent.canonical_request_hash,
+        approvalId,
+        notes,
+      },
+      clock,
+    });
 
-  if (intent.passport_id) {
-    const passport = getPassportById(intent.passport_id, operatorId, nowIso);
-    if (!passport) throw new Error('Authority passport not found; approval rejected');
-    try {
-      verifyStoredPassport(passport, operatorId, intent.agent_id || undefined, nowIso);
-    } catch {
-      throw new Error('Authority passport signature or owner binding failed; approval rejected');
-    }
-    if (passport.status === 'REVOKED') throw new Error('Authority passport has been revoked; approval rejected');
-    if (passport.status === 'EXPIRED' || nowIso >= passport.payload.expiresAt || nowIso < passport.payload.validFrom) throw new Error('Authority passport is not active; approval rejected');
-  }
-
-  assertValidTransition(intent.state, IntentStates.APPROVED);
-
-  // Store exact approval record bound to canonical hash
-  const approvalId = crypto.randomUUID();
-  db.insert(schema.intentApprovals).values({
-    id: approvalId,
-    intent_id: intentId,
-    operator_id: operatorId,
-    canonical_hash: intent.canonical_request_hash,
-    status: 'APPROVED',
-    notes: notes || null,
-    approved_at: nowIso,
-  }).run();
-
-  db.update(schema.purchaseIntents)
-    .set({ state: IntentStates.APPROVED, updated_at: nowIso })
-    .where(eq(schema.purchaseIntents.id, intentId))
-    .run();
-
-  appendAuditEvent({
-    eventType: 'INTENT_APPROVED',
-    intentId,
-    operatorId,
-    amountPaise: intent.total_amount_paise,
-    stateBefore: intent.state,
-    stateAfter: IntentStates.APPROVED,
-    payload: {
-      canonicalHash: intent.canonical_request_hash,
-      approvalId,
-      notes,
-    },
-    clock,
-  });
-
-  return {
-    ...intent,
-    state: IntentStates.APPROVED,
-    updated_at: nowIso,
-  };
+    return {
+      ...intent,
+      state: IntentStates.APPROVED,
+      updated_at: nowIso,
+    };
+  }).immediate();
+  if (result instanceof Error) throw result;
+  return result;
 }
 
 export function declineIntent(
@@ -462,54 +467,56 @@ export function declineIntent(
   notes?: string,
   clock: Clock = defaultClock
 ): PurchaseIntent {
-  const { db } = getDb();
-  const intent = getIntentById(intentId, operatorId);
-  if (!intent) {
-    throw new NotFoundError(`Purchase intent '${intentId}' not found`);
-  }
+  const { db, sqlite } = getDb();
+  return sqlite.transaction(() => {
+    const intent = getIntentById(intentId, operatorId);
+    if (!intent) {
+      throw new NotFoundError(`Purchase intent '${intentId}' not found`);
+    }
 
-  assertValidTransition(intent.state, IntentStates.DECLINED);
-  const nowIso = clock.nowIso();
+    assertValidTransition(intent.state, IntentStates.DECLINED);
+    const nowIso = clock.nowIso();
 
-  const approvalId = crypto.randomUUID();
-  db.insert(schema.intentApprovals).values({
-    id: approvalId,
-    intent_id: intentId,
-    operator_id: operatorId,
-    canonical_hash: intent.canonical_request_hash,
-    status: 'DECLINED',
-    notes: notes || null,
-    approved_at: nowIso,
-  }).run();
+    const approvalId = crypto.randomUUID();
+    db.insert(schema.intentApprovals).values({
+      id: approvalId,
+      intent_id: intentId,
+      operator_id: operatorId,
+      canonical_hash: intent.canonical_request_hash,
+      status: 'DECLINED',
+      notes: notes || null,
+      approved_at: nowIso,
+    }).run();
 
-  db.update(schema.purchaseIntents)
-    .set({
+    db.update(schema.purchaseIntents)
+      .set({
+        state: IntentStates.DECLINED,
+        failure_reason: notes || 'Operator declined purchase proposal',
+        updated_at: nowIso,
+      })
+      .where(eq(schema.purchaseIntents.id, intentId))
+      .run();
+
+    appendAuditEvent({
+      eventType: 'INTENT_DECLINED',
+      intentId,
+      operatorId,
+      amountPaise: intent.total_amount_paise,
+      stateBefore: intent.state,
+      stateAfter: IntentStates.DECLINED,
+      payload: {
+        canonicalHash: intent.canonical_request_hash,
+        approvalId,
+        notes,
+      },
+      clock,
+    });
+
+    return {
+      ...intent,
       state: IntentStates.DECLINED,
       failure_reason: notes || 'Operator declined purchase proposal',
       updated_at: nowIso,
-    })
-    .where(eq(schema.purchaseIntents.id, intentId))
-    .run();
-
-  appendAuditEvent({
-    eventType: 'INTENT_DECLINED',
-    intentId,
-    operatorId,
-    amountPaise: intent.total_amount_paise,
-    stateBefore: intent.state,
-    stateAfter: IntentStates.DECLINED,
-    payload: {
-      canonicalHash: intent.canonical_request_hash,
-      approvalId,
-      notes,
-    },
-    clock,
-  });
-
-  return {
-    ...intent,
-    state: IntentStates.DECLINED,
-    failure_reason: notes || 'Operator declined purchase proposal',
-    updated_at: nowIso,
-  };
+    };
+  }).immediate();
 }

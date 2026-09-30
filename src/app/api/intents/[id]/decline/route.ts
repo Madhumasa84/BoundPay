@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { declineIntent } from '@/services/purchase.service';
-import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, requireAuth, readOptionalJsonBody } from '@/app/api/api-helpers';
 
 export const runtime = 'nodejs';
 
@@ -14,16 +14,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const { id } = await params;
-    let reason: string | undefined;
-    try {
-      const body = await req.json();
-      const parsed = DeclineSchema.parse(body);
-      reason = parsed.reason;
-    } catch {
-      // Empty body is allowed
-    }
+    const parsed = DeclineSchema.parse(await readOptionalJsonBody(req));
 
-    const updatedIntent = declineIntent(id, auth.operator.operatorId, reason);
+    const updatedIntent = declineIntent(id, auth.operator.operatorId, parsed.reason);
     return jsonResponse({ intent: updatedIntent });
   } catch (err) {
     return errorResponse(err);

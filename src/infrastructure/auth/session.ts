@@ -83,7 +83,7 @@ export function validateSessionToken(
     return null;
   }
 
-  if (sessionRecord.expiresAt < nowIso) {
+  if (sessionRecord.expiresAt <= nowIso) {
     return null;
   }
 
@@ -114,12 +114,17 @@ export function revokeSessionToken(token: string, clock: Clock = defaultClock): 
  */
 export function parseCookies(cookieHeader: string | null): Record<string, string> {
   if (!cookieHeader) return {};
-  const cookies: Record<string, string> = {};
+  const cookies: Record<string, string> = Object.create(null);
   const pairs = cookieHeader.split(';');
   for (const pair of pairs) {
     const [name, ...rest] = pair.trim().split('=');
     if (name) {
-      cookies[name] = decodeURIComponent(rest.join('='));
+      try {
+        cookies[name] = decodeURIComponent(rest.join('='));
+      } catch {
+        // Invalid client cookies must not prevent authentication of other cookies.
+        delete cookies[name];
+      }
     }
   }
   return cookies;
@@ -135,7 +140,16 @@ export function validateSameOrigin(req: Request): boolean {
   }
 
   const origin = req.headers.get('origin');
-  const host = req.headers.get('host');
+  const requestUrl = new URL(req.url);
+  // Next.js may synthesize req.url with its listening hostname. The HTTP Host
+  // header identifies the browser's destination; preserve protocol and port.
+  const requestHost = req.headers.get('host') || requestUrl.host;
+  let requestOrigin: string;
+  try {
+    if (/[\/\\@?#\s]/.test(requestHost)) return false;
+    const destination = new URL(`${requestUrl.protocol}//${requestHost}`);
+    requestOrigin = destination.origin;
+  } catch { return false; }
 
   if (!origin) {
     // If no origin, check referer
@@ -151,7 +165,7 @@ export function validateSameOrigin(req: Request): boolean {
     }
     try {
       const refererUrl = new URL(referer);
-      return refererUrl.host === host;
+      return refererUrl.origin === requestOrigin;
     } catch {
       return false;
     }
@@ -159,7 +173,7 @@ export function validateSameOrigin(req: Request): boolean {
 
   try {
     const originUrl = new URL(origin);
-    return originUrl.host === host;
+    return originUrl.origin === requestOrigin;
   } catch {
     return false;
   }

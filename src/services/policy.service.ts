@@ -7,6 +7,10 @@ import { appendAuditEvent } from './audit.service';
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
+export class PolicyConflictError extends Error {
+  constructor(message: string) { super(message); this.name = 'PolicyConflictError'; }
+}
+
 export function getKolkataDayRange(date: Date = new Date()): { startIso: string; endIso: string } {
   const istTime = new Date(date.getTime() + IST_OFFSET_MS);
   const year = istTime.getUTCFullYear();
@@ -118,69 +122,71 @@ export function updatePolicy(
   clock: Clock = defaultClock
 ): SpendingPolicy {
   const validated = PolicyUpdateSchema.parse(input);
-  const current = getCurrentPolicy();
-  const { db } = getDb();
+  const { db, sqlite } = getDb();
+  return sqlite.transaction(() => {
+    const current = getCurrentPolicy();
 
-  // Validate that daily budget reduction does not violate committed spend
-  // Accounting is isolated by adapter mode, but a single policy governs both
-  // namespaces. A reduction must be safe for whichever namespace currently has
-  // the larger commitment; checking MOCK alone could strand Razorpay TEST spend
-  // above the newly published budget.
-  const mockUsage = getDailyBudgetUsage('MOCK', clock, current);
-  const razorpayTestUsage = getDailyBudgetUsage('RAZORPAY_TEST', clock, current);
-  const highestCommittedPaise = Math.max(
-    mockUsage.totalCommittedPaise,
-    razorpayTestUsage.totalCommittedPaise
-  );
-  if (validated.daily_budget_paise < highestCommittedPaise) {
-    throw new Error(
-      `Cannot reduce daily budget to ${validated.daily_budget_paise} paise: an adapter mode already has ${highestCommittedPaise} paise committed`
+    // Validate that daily budget reduction does not violate committed spend
+    // Accounting is isolated by adapter mode, but a single policy governs both
+    // namespaces. A reduction must be safe for whichever namespace currently has
+    // the larger commitment; checking MOCK alone could strand Razorpay TEST spend
+    // above the newly published budget.
+    const mockUsage = getDailyBudgetUsage('MOCK', clock, current);
+    const razorpayTestUsage = getDailyBudgetUsage('RAZORPAY_TEST', clock, current);
+    const highestCommittedPaise = Math.max(
+      mockUsage.totalCommittedPaise,
+      razorpayTestUsage.totalCommittedPaise
     );
-  }
+    if (validated.daily_budget_paise < highestCommittedPaise) {
+      throw new PolicyConflictError(
+        `Cannot reduce daily budget to ${validated.daily_budget_paise} paise: an adapter mode already has ${highestCommittedPaise} paise committed`
+      );
+    }
 
-  const nowIso = clock.nowIso();
-  const nextVersion = current.version + 1;
-  const newPolicyId = crypto.randomUUID();
+    const nowIso = clock.nowIso();
+    const nextVersion = current.version + 1;
+    const newPolicyId = crypto.randomUUID();
 
-  db.insert(schema.policies).values({
-    id: newPolicyId,
-    version: nextVersion,
-    currency: 'INR',
-    max_transaction_amount_paise: validated.max_transaction_amount_paise,
-    daily_budget_paise: validated.daily_budget_paise,
-    approval_threshold_paise: validated.approval_threshold_paise,
-    allowed_categories_json: JSON.stringify(validated.allowed_categories),
-    approved_merchant_id: validated.approved_merchant_id,
-    allow_subscriptions: validated.allow_subscriptions,
-    expires_at: validated.expires_at,
-    created_at: nowIso,
-  }).run();
+    db.insert(schema.policies).values({
+      id: newPolicyId,
+      version: nextVersion,
+      currency: 'INR',
+      max_transaction_amount_paise: validated.max_transaction_amount_paise,
+      daily_budget_paise: validated.daily_budget_paise,
+      approval_threshold_paise: validated.approval_threshold_paise,
+      allowed_categories_json: JSON.stringify(validated.allowed_categories),
+      approved_merchant_id: validated.approved_merchant_id,
+      allow_subscriptions: validated.allow_subscriptions,
+      expires_at: validated.expires_at,
+      created_at: nowIso,
+    }).run();
 
-  const updatedPolicy: SpendingPolicy = {
-    id: newPolicyId,
-    version: nextVersion,
-    currency: 'INR',
-    max_transaction_amount_paise: validated.max_transaction_amount_paise,
-    daily_budget_paise: validated.daily_budget_paise,
-    approval_threshold_paise: validated.approval_threshold_paise,
-    allowed_categories: validated.allowed_categories,
-    approved_merchant_id: validated.approved_merchant_id,
-    allow_subscriptions: validated.allow_subscriptions,
-    expires_at: validated.expires_at,
-    created_at: nowIso,
-  };
+    const updatedPolicy: SpendingPolicy = {
+      id: newPolicyId,
+      version: nextVersion,
+      currency: 'INR',
+      max_transaction_amount_paise: validated.max_transaction_amount_paise,
+      daily_budget_paise: validated.daily_budget_paise,
+      approval_threshold_paise: validated.approval_threshold_paise,
+      allowed_categories: validated.allowed_categories,
+      approved_merchant_id: validated.approved_merchant_id,
+      allow_subscriptions: validated.allow_subscriptions,
+      expires_at: validated.expires_at,
+      created_at: nowIso,
+    };
 
-  appendAuditEvent({
-    eventType: 'POLICY_UPDATED',
-    operatorId,
-    policyVersion: nextVersion,
-    payload: {
-      previousVersion: current.version,
-      newVersion: nextVersion,
-      newPolicy: updatedPolicy,
-    },
-    clock,
-  });
+    appendAuditEvent({
+      eventType: 'POLICY_UPDATED',
+      operatorId,
+      policyVersion: nextVersion,
+      payload: {
+        previousVersion: current.version,
+        newVersion: nextVersion,
+        newPolicy: updatedPolicy,
+      },
+      clock,
+    });
 
-  return updatedPolicy;
+    return updatedPolicy;
+  }).immediate();
 }

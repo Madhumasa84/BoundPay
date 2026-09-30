@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defaultExecutionService } from '@/services/execution.service';
-import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, requireAuth, readOptionalJsonBody } from '@/app/api/api-helpers';
 
 export const runtime = 'nodejs';
 
@@ -21,19 +21,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const { id } = await params;
-    let faultInjection = 'NONE' as const;
-    try {
-      const body = await req.json();
-      const parsed = ExecuteSchema.parse(body);
-      faultInjection = parsed.fault_injection as any;
-    } catch {
-      // Empty body is acceptable
-    }
+    const parsed = ExecuteSchema.parse(await readOptionalJsonBody(req));
 
     const result = await defaultExecutionService.executeIntent(
       id,
       auth.operator.operatorId,
-      faultInjection
+      parsed.fault_injection
     );
 
     return jsonResponse({ result });

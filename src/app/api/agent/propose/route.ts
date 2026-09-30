@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { z } from 'zod';
-import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, requireAuth, readJsonBody } from '@/app/api/api-helpers';
 import { ShoppingAgentRequestSchema } from '@/domain/agent';
 import {
   invokeShoppingAgent,
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if ('status' in auth) return auth;
 
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const validated = AgentProposeBodySchema.parse(body);
     if (!validated.passport_id || !validated.agent_id) {
       return jsonResponse({ error: 'Validation Error', message: 'An explicit Authority Passport and agent binding are required' }, 400);

@@ -1,6 +1,6 @@
 import { ProductInputSchema } from '@/domain/catalog';
 import { addProduct, listProducts } from '@/services/catalog.service';
-import { errorResponse, jsonResponse, requireAuth } from '@/app/api/api-helpers';
+import { errorResponse, jsonResponse, requireAuth, readJsonBody } from '@/app/api/api-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   if ('status' in auth) return auth;
 
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const validated = ProductInputSchema.parse(body);
     const product = addProduct(validated, auth.operator.operatorId);
     return jsonResponse({ product }, 201);
