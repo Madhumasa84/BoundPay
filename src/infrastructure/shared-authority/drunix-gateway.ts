@@ -79,12 +79,13 @@ export interface DrunixReservation {
 }
 
 export class DrunixGatewayClient {
-  private readonly settings = getDrunixSettings();
+  private readonly settings: ReturnType<typeof getDrunixSettings>;
   private readonly grpcClient: grpc.Client;
   private readonly gateway: ReturnType<typeof connect>;
   private readonly contract: Contract;
 
   constructor(role: 'participant' | 'verifier' = 'participant') {
+    this.settings = getDrunixSettings(role);
     const credentials = grpc.credentials.createSsl(this.settings.tlsRootCert);
     this.grpcClient = new grpc.Client(this.settings.endpoint, credentials, {
       'grpc.ssl_target_name_override': this.settings.hostAlias,
@@ -92,10 +93,10 @@ export class DrunixGatewayClient {
     this.gateway = connect({
       client: this.grpcClient,
       identity: {
-        mspId: role === 'participant' ? this.settings.mspId : this.settings.verifierMspId,
-        credentials: role === 'participant' ? this.settings.clientCert : this.settings.verifierClientCert,
+        mspId: this.settings.mspId,
+        credentials: this.settings.clientCert,
       },
-      signer: signers.newPrivateKeySigner(crypto.createPrivateKey(role === 'participant' ? this.settings.clientPrivateKey : this.settings.verifierClientPrivateKey)),
+      signer: signers.newPrivateKeySigner(crypto.createPrivateKey(this.settings.clientPrivateKey)),
       hash: hash.sha256,
       evaluateOptions: () => ({ deadline: Date.now() + 15000 }),
       endorseOptions: () => ({ deadline: Date.now() + 30000 }),

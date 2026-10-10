@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-10",
+  "scope": "Independent verifier, persistent synthetic provider, role credential separation, contract lifecycle tests and repeatability tooling",
+  "changes": [
+    "Purchasing services load participant credentials only and request outcomes from a separate authenticated verifier process.",
+    "The verifier independently reads ledger and provider evidence and checks exact purchase bindings before signing an outcome.",
+    "Purchasing services independently read the terminal ledger state; an HTTP success claim alone cannot release a hold.",
+    "A separate SQLite-backed MOCK provider retains orders and capture evidence across process restarts, with distinct dispatch and read tokens.",
+    "The app demo retains private role configurations, keys, databases, provider-call assertions and HTTP latency under .boundpay-runs.",
+    "Persistent setup builds matching Drunix CLI tools offline from the vendored pinned v1.0.0 source in a digest-pinned Go container.",
+    "A repeatability runner alternates timeout and response loss, saves each result, and summarizes route latency after all assertions pass.",
+    "New contract lifecycle tests exercise dispatch, unknown holds, exact identities, terminal outcome idempotency and prospective revocation."
+  ],
+  "checks": {
+    "application_tests": { "status": "passed", "tests": 464, "files": 41, "log": "/tmp/boundpay-upgrade-full-tests.log" },
+    "independent_boundary_tests": { "status": "passed", "tests": 29, "included_in_application_total": true },
+    "browser_tests": { "status": "passed", "tests": 18, "browser": "chromium", "log": "/tmp/boundpay-upgrade-e2e.log" },
+    "concurrency_stress": { "status": "passed", "tests": 7, "rounds": 25, "log": "/tmp/boundpay-upgrade-stress.log" },
+    "production_build": { "status": "passed", "log": "/tmp/boundpay-upgrade-build.log" },
+    "typescript": { "status": "passed", "log": "/tmp/boundpay-upgrade-types.log" },
+    "lint": { "status": "passed", "log": "/tmp/boundpay-upgrade-lint.log" },
+    "go_race_tests": { "status": "passed", "statement_coverage_percent": 31.8, "previous_statement_coverage_percent": 14.3, "log": "/tmp/boundpay-upgrade-go-tests.log" },
+    "go_vet": { "status": "passed", "log": "/tmp/boundpay-upgrade-go-vet.log" },
+    "drunix_persistent_preparation": { "status": "passed", "revision": "3fb2b135a5b2adf7e1071d9b1624052a1bbb1772", "tools": ["peer", "cryptogen", "configtxgen", "configtxlator", "osnadmin"], "go_image": "golang:1.26.1@sha256:cd78d88e00afadbedd272f977d375a6247455f3a4b1178f8ae8bbcb201743a8a", "log": "/tmp/boundpay-upgrade-prepare.log" },
+    "public_artifact_secrets": { "status": "passed", "files": 104, "configured_secrets_found": 0, "log": "/tmp/boundpay-upgrade-public-secrets.log" },
+    "jev_final_review": { "status": "completed", "risk": "high", "security_sensitive_probability": 0.94, "tests_needed_probability": 0.89, "response": "Added boundary rejection, process restart, read-only credential and independent ledger-readback tests; retained holds on uncertain evidence", "log": "/tmp/boundpay-upgrade-jev.log" }
+  },
+  "limits": [
+    "Fresh ledger-backed app demo and repeated ledger measurements were not executed for this upgrade; the preparation check does not start a network or deploy the contract.",
+    "The contract test fixture does not establish endorsement or MVCC behavior.",
+    "Processes share one host operator; separate configured credentials do not prove OS isolation or independent organizational governance.",
+    "Live model and Razorpay calls were not repeated. Razorpay payment failure alone is not accepted as terminal order failure by the new verifier.",
+    "The one locally mitigated braces development advisory remains recorded in the initial verification artifact.",
+    "Temporary verification logs may be removed by host cleanup."
+  ]
+}

@@ -5,6 +5,7 @@ import { loadCliEnv } from '../src/infrastructure/config/load-cli-env';
 const SECRET_NAMES = [
   'AUTHORITY_SIGNING_PRIVATE_KEY', 'RAZORPAY_KEY_SECRET',
   'RAZORPAY_WEBHOOK_SECRET', 'SARVAM_API_KEY', 'SESSION_SECRET',
+  'SHARED_AUTHORITY_VERIFIER_TOKEN', 'MOCK_PROVIDER_TOKEN', 'MOCK_PROVIDER_READ_TOKEN',
 ] as const;
 
 function collectFiles(root: string): string[] {

@@ -15,14 +15,11 @@ export interface DrunixSettings {
   channel: string;
   chaincode: string;
   mspId: string;
-  verifierMspId: string;
   endpoint: string;
   hostAlias: string;
   tlsRootCert: Buffer;
   clientCert: Buffer;
   clientPrivateKey: Buffer;
-  verifierClientCert: Buffer;
-  verifierClientPrivateKey: Buffer;
   participantMsps: string[];
   participantIdentities: Array<{ mspId: string; clientId: string }>;
   verifierIdentities: Array<{ mspId: string; clientId: string }>;
@@ -35,15 +32,14 @@ export function getSharedAuthorityMode(): SharedAuthorityMode {
   throw new SharedAuthorityConfigurationError('SHARED_AUTHORITY_MODE must be DISABLED, SIMULATED, or DRUNIX');
 }
 
-export function getDrunixSettings(): DrunixSettings {
+export function getDrunixSettings(role: 'participant' | 'verifier' = 'participant'): DrunixSettings {
   const mandateId = requiredEnv('DRUNIX_MANDATE_ID');
   const channel = requiredEnv('DRUNIX_CHANNEL');
   const chaincode = requiredEnv('DRUNIX_CHAINCODE');
-  const mspId = requiredEnv('DRUNIX_MSP_ID');
-  const verifierMspId = requiredEnv('DRUNIX_VERIFIER_MSP_ID');
+  const mspId = requiredEnv(role === 'participant' ? 'DRUNIX_MSP_ID' : 'DRUNIX_VERIFIER_MSP_ID');
   const endpoint = requiredEnv('DRUNIX_GATEWAY_ENDPOINT');
   const hostAlias = requiredEnv('DRUNIX_PEER_HOST_ALIAS');
-  for (const [field, value] of Object.entries({ mandateId, channel, chaincode, mspId, verifierMspId })) {
+  for (const [field, value] of Object.entries({ mandateId, channel, chaincode, mspId })) {
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value)) throw new SharedAuthorityConfigurationError(`${field} must be a safe identifier`);
   }
   if (!/^[A-Za-z0-9.-]+:\d{1,5}$/.test(endpoint)) throw new SharedAuthorityConfigurationError('DRUNIX_GATEWAY_ENDPOINT must be host:port');
@@ -60,14 +56,11 @@ export function getDrunixSettings(): DrunixSettings {
     channel,
     chaincode,
     mspId,
-    verifierMspId,
     endpoint,
     hostAlias,
     tlsRootCert: readPem('DRUNIX_TLS_ROOT_CERT_FILE'),
-    clientCert: readPem('DRUNIX_CLIENT_CERT_FILE'),
-    clientPrivateKey: readPem('DRUNIX_CLIENT_PRIVATE_KEY_FILE'),
-    verifierClientCert: readPem('DRUNIX_VERIFIER_CLIENT_CERT_FILE'),
-    verifierClientPrivateKey: readPem('DRUNIX_VERIFIER_CLIENT_PRIVATE_KEY_FILE'),
+    clientCert: readPem(role === 'participant' ? 'DRUNIX_CLIENT_CERT_FILE' : 'DRUNIX_VERIFIER_CLIENT_CERT_FILE'),
+    clientPrivateKey: readPem(role === 'participant' ? 'DRUNIX_CLIENT_PRIVATE_KEY_FILE' : 'DRUNIX_VERIFIER_CLIENT_PRIVATE_KEY_FILE'),
     participantMsps,
     participantIdentities,
     verifierIdentities,

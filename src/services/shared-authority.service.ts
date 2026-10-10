@@ -9,6 +9,7 @@ import { getDrunixSettings, getSharedAuthorityMode } from '@/infrastructure/shar
 import { DrunixGatewayClient, DrunixOperationError, type DrunixMandate, type DrunixReservation } from '@/infrastructure/shared-authority/drunix-gateway';
 import { getPassportById, verifyStoredPassport } from './passport.service';
 import { getCurrentPolicy, getKolkataDayRange } from './policy.service';
+import { callService, serviceToken, serviceUrl } from '../infrastructure/http/local-service';
 
 export class SharedAuthorityDeniedError extends Error {
   constructor(message: string) { super(message); this.name = 'SharedAuthorityDeniedError'; }
@@ -443,20 +444,23 @@ export async function recordSharedPaymentOutcome(input: {
     evidenceCommitment = generated.digest;
     setOperation(input.intentId, { evidence_salt_ciphertext: encryptCommitmentSalt(salt), outcome_commitment: evidenceCommitment, payment_state: input.outcome === 'SUCCESS' ? 'SUCCEEDED' : 'FAILED_DEFINITIVE' });
   }
-  const client = new DrunixGatewayClient('verifier');
+  let client: DrunixGatewayClient | undefined;
   try {
-    const identity = await client.identify();
-    const mandate = await client.queryMandate(operation.mandate_id);
-    if (!mandate.verifierIdentities.some((verifier) => verifier.mspId === identity.mspId && verifier.clientId === identity.clientId)) {
-      throw new SharedAuthorityDeniedError('Configured verifier certificate is not authorized for this mandate');
-    }
-    const contractMethod = input.outcome === 'SUCCESS' ? 'CommitOutcome' : 'ReleaseDefinitiveFailure';
-    const commit = await client.submit<DrunixReservation>(contractMethod, [operation.mandate_id, operation.reservation_id, evidenceCommitment]);
+    const url = serviceUrl(process.env.SHARED_AUTHORITY_VERIFIER_URL || '', 'SHARED_AUTHORITY_VERIFIER_URL');
+    const token = serviceToken(process.env.SHARED_AUTHORITY_VERIFIER_TOKEN, 'SHARED_AUTHORITY_VERIFIER_TOKEN');
+    const result = await callService(url, token, '/verify', {
+      ...input, mandateId: operation.mandate_id, reservationId: operation.reservation_id,
+      paymentAttemptId: operation.payment_attempt_id, evidenceSalt: salt.toString('base64url'), evidenceCommitment,
+    }, getDrunixSettings().commitTimeoutMs + 30000) as { confirmed?: boolean };
+    if (result.confirmed !== true) throw new Error('Independent verifier has not established a committed outcome');
+    // The purchasing service independently reads the ledger with its own
+    // participant identity; an HTTP claim alone cannot release local funds.
+    client = new DrunixGatewayClient();
     const reservation = await client.queryReservation(operation.reservation_id, operation.mandate_id);
     const expected = input.outcome === 'SUCCESS' ? 'SETTLED' : 'RELEASED';
-    if (reservation.status !== expected || reservation.evidenceCommitment !== evidenceCommitment || !reservation.outcomeTransactionId) {
+    if (reservation.mandateId !== operation.mandate_id || reservation.reservationId !== operation.reservation_id || reservation.paymentAttemptId !== operation.payment_attempt_id || reservation.status !== expected || reservation.outcome !== input.outcome || reservation.evidenceCommitment !== evidenceCommitment || !reservation.outcomeTransactionId) {
       setOperation(input.intentId, { ledger_state: 'OUTCOME_UNKNOWN', last_error: 'Outcome commit response and queried reservation did not match' });
-      return { confirmed: false, transactionId: commit.transactionId, message: 'Provider result was verified locally; shared ledger outcome still needs reconciliation' };
+      return { confirmed: false, message: 'Provider result was verified locally; shared ledger outcome still needs reconciliation' };
     }
     setOperation(input.intentId, {
       ledger_state: expected,
@@ -464,7 +468,7 @@ export async function recordSharedPaymentOutcome(input: {
       // An idempotent retry has its own VALID transaction, while the outcome
       // transition was recorded by the original transaction on the ledger.
       outcome_transaction_id: reservation.outcomeTransactionId,
-      validation_code: commit.validationCode,
+      validation_code: 'VALID',
       last_error: null,
       updated_at: new Date().toISOString(),
     });
@@ -472,7 +476,7 @@ export async function recordSharedPaymentOutcome(input: {
   } catch (error) {
     setOperation(input.intentId, { ledger_state: 'OUTCOME_UNKNOWN', payment_state: input.outcome === 'SUCCESS' ? 'SUCCEEDED' : 'FAILED_DEFINITIVE', last_error: safeError(error), updated_at: new Date().toISOString() });
     return { confirmed: false, transactionId: error instanceof DrunixOperationError ? error.transactionId : undefined, message: 'Provider result is locally verified; Drunix outcome commit is pending' };
-  } finally { client.close(); }
+  } finally { client?.close(); }
 }
 
 export async function querySharedOperation(intentId: string): Promise<{ operation: typeof schema.sharedAuthorityOperations.$inferSelect | null; reservation: DrunixReservation | null }> {

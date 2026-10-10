@@ -105,6 +105,152 @@ describe('Sarvam AI Shopping Model Provider Tests (25 requirements)', () => {
     };
   }
 
+  it('reserves enough tokens for reasoning and the structured proposal', async () => {
+    const proposal = JSON.stringify({ selected: true, product_id: 'prod_mouse', quantity: 1, reason: 'Matches the request.' });
+    const provider = new SarvamProvider({
+      apiKey: FAKE_KEY,
+      maxRetries: 0,
+      fetchFn: createMockFetch((_index, _url, options) => {
+        const request = JSON.parse(String(options.body));
+        return new Response(request.reasoning_effort === 'low' && request.max_tokens >= 4096
+          ? makeSarvamResponse(proposal)
+          : makeSarvamResponse(null, { finish_reason: 'length' }));
+      }),
+    });
+    const result = await provider.propose('One mouse', 200000, mockCatalog);
+    expect(result.product_id).toBe('prod_mouse');
+    expect(result.finish_reason).toBe('stop');
+  });
+
+  it('times out a response body that stalls after headers arrive', async () => {
+    let streamController: ReadableStreamDefaultController<Uint8Array>;
+    const provider = new SarvamProvider({
+      apiKey: FAKE_KEY,
+      timeoutMs: 20,
+      maxRetries: 0,
+      fetchFn: createMockFetch((_index, _url, options) => {
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            streamController = controller;
+            controller.enqueue(new TextEncoder().encode('{'));
+            options.signal!.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')), { once: true });
+          },
+        });
+        return new Response(stream);
+      }),
+    });
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const result = await Promise.race([
+        provider.propose('One mouse', 200000, mockCatalog).then(() => 'completed', (error: Error) => error.message),
+        new Promise<string>((resolve) => { deadline = setTimeout(() => resolve('body remained pending'), 250); }),
+      ]);
+      expect(result).toMatch(/timed out after 20ms/);
+    } finally {
+      clearTimeout(deadline);
+      streamController!.error(new Error('test cleanup'));
+    }
+  });
+
+  it('preserves Indic text when a UTF-8 character spans response chunks', async () => {
+    const reason = 'माउस ₹1500 में उपलब्ध है।';
+    const response = makeSarvamResponse(JSON.stringify({ selected: true, product_id: 'prod_mouse', quantity: 1, reason }));
+    const bytes = new TextEncoder().encode(response);
+    const split = bytes.indexOf(0xe0) + 1;
+    const provider = new SarvamProvider({
+      apiKey: FAKE_KEY,
+      maxRetries: 0,
+      fetchFn: createMockFetch(() => new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(bytes.slice(0, split));
+          controller.enqueue(bytes.slice(split));
+          controller.close();
+        },
+      }))),
+    });
+    expect((await provider.propose('One mouse', 200000, mockCatalog)).reason).toBe(reason);
+  });
+
+  it('does not return credentials echoed in an otherwise valid response', async () => {
+    const provider = new SarvamProvider({
+      apiKey: FAKE_KEY,
+      fetchFn: createMockFetch(() => new Response(makeSarvamResponse(JSON.stringify({
+        selected: true, product_id: 'prod_mouse', quantity: 1, reason: `Selected with ${FAKE_KEY}`,
+      }), { model: FAKE_KEY }))),
+    });
+    const result = await provider.propose('One mouse', 200000, mockCatalog);
+    expect(result.selected).toBe(true);
+    expect(JSON.stringify(result)).not.toContain(FAKE_KEY);
+    expect(result.reason).toContain('[REDACTED]');
+  });
+
+  it('measures elapsed latency independently of wall-clock corrections', async () => {
+    const provider = new SarvamProvider({
+      apiKey: FAKE_KEY,
+      fetchFn: createMockFetch(() => {
+        vi.spyOn(Date, 'now').mockReturnValue(1000);
+        return new Response(makeSarvamResponse(JSON.stringify({ selected: true, product_id: 'prod_mouse', quantity: 1, reason: 'Matches.' })));
+      }),
+    });
+    vi.spyOn(Date, 'now').mockReturnValue(10000);
+    try {
+      expect((await provider.propose('One mouse', 200000, mockCatalog)).latency_ms).toBeGreaterThanOrEqual(0);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it.each([
+    [250000, 0, 1, 2],
+    [279900, 1, 1, 3],
+    [559799, 1, 3, 6],
+  ])('supplies trusted affordable quantities for a %i paise budget', async (budget, keyboard, mouse, book) => {
+    const provider = new SarvamProvider({
+      apiKey: FAKE_KEY,
+      fetchFn: createMockFetch(() => new Response(makeSarvamResponse(JSON.stringify({ selected: false, product_id: '', quantity: 0, reason: 'No matching product.' })))),
+    });
+    await provider.propose('Select within the budget', budget, mockCatalog);
+    const prompt: string = recordedRequests[0].body.messages[0].content;
+    for (const [product, maximum] of [['prod_keyboard', keyboard], ['prod_mouse', mouse], ['prod_book', book]]) {
+      const entry = prompt.split(`id: ${product}\n`)[1]?.split('PRODUCT_END')[0];
+      expect(entry).toContain(`max_affordable_quantity: ${maximum}\n`);
+    }
+  });
+
+  it.each(['finish reason', 'unknown product', 'extra schema field'])('does not expose credentials echoed in a provider %s', async (location) => {
+    const proposal = { selected: true, product_id: 'prod_mouse', quantity: 1, reason: 'Matches the request.' };
+    const content = location === 'unknown product' ? { ...proposal, product_id: FAKE_KEY }
+      : location === 'extra schema field' ? { ...proposal, [FAKE_KEY]: true } : proposal;
+    const provider = new SarvamProvider({
+      apiKey: FAKE_KEY,
+      maxRetries: 0,
+      fetchFn: createMockFetch(() => new Response(makeSarvamResponse(JSON.stringify(content), location === 'finish reason' ? { finish_reason: FAKE_KEY } : {}))),
+    });
+    const error = await provider.propose('One mouse', 200000, mockCatalog).catch((cause: Error) => cause);
+    expect(error).toBeInstanceOf(SarvamInvocationError);
+    expect((error as Error).message).not.toContain(FAKE_KEY);
+  });
+
+  it('rejects an excessive Retry-After without waiting indefinitely', async () => {
+    const provider = new SarvamProvider({
+      apiKey: FAKE_KEY,
+      timeoutMs: 50,
+      maxRetries: 1,
+      fetchFn: createMockFetch(() => new Response('{}', { status: 429, headers: { 'Retry-After': '86400' } })),
+    });
+    vi.useFakeTimers();
+    try {
+      const outcome = provider.propose('One mouse', 200000, mockCatalog).catch((error: Error) => error);
+      await vi.advanceTimersByTimeAsync(100);
+      const result = await Promise.race([outcome, Promise.resolve('retry remained pending')]);
+      expect(result).toBeInstanceOf(SarvamInvocationError);
+      expect((result as Error).message).toMatch(/rate limit/);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
   // 1. Valid selected-product response
   it('1. Valid selected-product response parses correctly and validates request shape', async () => {
     const validJson = JSON.stringify({

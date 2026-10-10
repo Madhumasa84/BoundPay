@@ -11,7 +11,7 @@ let directory: string;
 function scan() {
   const env = { ...process.env };
   for (const name of Object.keys(env)) {
-    if (/^(AUTHORITY_|RAZORPAY_|SARVAM_|SESSION_SECRET)/.test(name)) delete env[name];
+    if (/^(AUTHORITY_|RAZORPAY_|SARVAM_|SESSION_SECRET|SHARED_AUTHORITY_VERIFIER_TOKEN|MOCK_PROVIDER_)/.test(name)) delete env[name];
   }
   return spawnSync(process.execPath, ['--import', loader, scanner], {
     cwd: directory, env, encoding: 'utf8', timeout: 15000,

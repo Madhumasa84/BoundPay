@@ -404,7 +404,8 @@ export class RazorpayTestAdapter implements PaymentAdapter {
       // An ambiguous or unrelated search result cannot establish order binding.
       if (matches.length !== 1) return null;
       const order = matches[0];
-      return this.getOrderStatus(order.id);
+      const status = await this.getOrderStatus(order.id);
+      return { ...status, rawResponse: { ...status.rawResponse, receipt: order.receipt, intent_id: order.notes?.intent_id } };
     } catch {
       return null;
     }

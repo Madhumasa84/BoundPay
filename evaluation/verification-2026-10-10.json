@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-10",
+  "scope": "Local application verification with fixture model proposals and MOCK payments; chaincode race and static checks",
+  "environment": {
+    "node": "20.20.2",
+    "pnpm": "10.33.0",
+    "next": "15.5.27",
+    "go_container": "golang:1.23.0@sha256:acfb46be39840f8c2a6b9efdd673c6627011200c73bab4e6d18b8b9ab4641c46"
+  },
+  "repairs": [
+    "Upgraded Next.js from 15.5.24 to 15.5.27 for two cache-poisoning advisories.",
+    "Raised sharp override to >=0.35.5 and source-map-js override to >=1.2.2.",
+    "Pinned all postcss-selector-parser copies, including postcss-nested's copy, to 7.1.6.",
+    "Retained a pnpm patch for braces 3.0.3 that rejects excessive brace and parenthesis nesting before recursive AST traversal.",
+    "Added five regression tests covering parse, compile, expand, stringify and ordinary nested glob behavior.",
+    "Updated README verification evidence and placed the production build before the browser test command."
+  ],
+  "checks": {
+    "automated_tests": { "status": "passed", "tests": 435, "files": 37, "log": "/tmp/boundpay-oct10-tests-verified.log" },
+    "browser_tests": { "status": "passed", "tests": 18, "browser": "chromium", "log": "/tmp/boundpay-oct10-e2e-verified.log" },
+    "concurrency_stress": { "status": "passed", "tests": 7, "rounds": 25, "log": "/tmp/boundpay-oct10-stress-verified.log" },
+    "production_build": { "status": "passed", "log": "/tmp/boundpay-oct10-build-verified.log" },
+    "typescript": { "status": "passed", "log": "/tmp/boundpay-oct10-types-verified.log" },
+    "lint": { "status": "passed", "log": "/tmp/boundpay-oct10-lint-verified.log" },
+    "go_race_tests": { "status": "passed", "statement_coverage_percent": 14.3, "log": "/tmp/boundpay-oct10-go-tests.log" },
+    "go_vet": { "status": "passed", "log": "/tmp/boundpay-oct10-go-vet-verified.log" },
+    "frozen_offline_install": { "status": "passed", "log": "/tmp/boundpay-oct10-frozen.log" },
+    "schema_export": { "status": "passed", "artifact": "/tmp/boundpay-oct10-schema-verified.sql" },
+    "authority_configuration": { "status": "passed", "log": "/tmp/boundpay-oct10-authority-final.log" },
+    "public_artifact_secrets": { "status": "passed", "files": 104, "configured_secrets_found": 0, "log": "/tmp/boundpay-oct10-artifacts-verified.log" },
+    "production_dependency_audit": { "status": "passed", "advisories": 0, "report": "/tmp/boundpay-oct10-audit-prod.json" },
+    "full_dependency_audit": {
+      "status": "one_locally_mitigated_advisory_remains",
+      "high": 1,
+      "moderate": 0,
+      "report": "/tmp/boundpay-oct10-audit-verified.json",
+      "remaining_advisory": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "package": "braces@3.0.3",
+      "dependency_scope": "development",
+      "patch": "patches/braces@3.0.3.patch",
+      "limitation": "The local guard bounds AST depth for parsed string patterns. Directly caller-constructed AST objects are not validated. Audit remains nonzero and the advisory is not suppressed."
+    },
+    "patch_clean_install": {
+      "status": "passed",
+      "excessive_depth_cases": 16,
+      "normal_glob_expansion": "passed",
+      "install_log": "/tmp/boundpay-oct10-patch-reinstall-network.log",
+      "verification_log": "/tmp/boundpay-oct10-patch-smoke-final.log"
+    },
+    "jev_focused_review": {
+      "status": "completed",
+      "risk": "medium",
+      "security_sensitive_probability": 0.92,
+      "tests_needed_probability": 0.38,
+      "log": "/tmp/boundpay-oct10-jev-focused.log"
+    }
+  },
+  "initial_failures": [
+    "Four secret-scanner CLI tests failed because spawnSync returned EPERM in the sandbox. The unrestricted full suite passed without changing the scanner.",
+    "A TypeScript check overlapped with Next's regeneration of .next/types. Sequential verification after the completed build passed.",
+    "The initial full dependency audit reported six advisories: three high and three moderate. Five were removed through dependency upgrades; the remaining development advisory has a local mitigation.",
+    "Four new nesting-limit regressions failed before applying the braces patch and passed afterward."
+  ],
+  "limits": [
+    "The fresh ledger-backed Drunix demo is blocked: stopped Docker containers reference missing identity and configuration directories under /tmp.",
+    "Live model calls were not repeated; provider behavior was tested through the existing mocked regression suite.",
+    "Razorpay calls were not repeated; prior HTTP 401 credential rejection remains recorded in docs/verification-2026-10-02.md.",
+    "Passing suites are not exhaustive coverage; Go statement coverage is 14.3%.",
+    "Detailed logs are local temporary artifacts and may be removed by host cleanup."
+  ]
+}

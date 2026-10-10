@@ -6,6 +6,7 @@ import { PurchaseIntent } from '../domain/intent';
 import { computeCanonicalIntentHash } from '../domain/intent';
 import { PaymentAdapter, PaymentFaultType } from '../infrastructure/payment/adapter.interface';
 import { MockPaymentAdapter } from '../infrastructure/payment/mock-adapter';
+import { HttpMockPaymentAdapter } from '../infrastructure/payment/http-mock-adapter';
 import { RazorpayTestAdapter } from '../infrastructure/payment/razorpay-test-adapter';
 import { Clock, defaultClock } from '../infrastructure/clock/clock';
 import { getCurrentPolicy, getKolkataDayRange } from './policy.service';
@@ -80,7 +81,7 @@ export class ExecutionService {
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
       return new RazorpayTestAdapter({ keyId, keySecret, webhookSecret });
     }
-    return new MockPaymentAdapter();
+    return process.env.MOCK_PROVIDER_URL ? new HttpMockPaymentAdapter() : new MockPaymentAdapter();
   }
 
   /**

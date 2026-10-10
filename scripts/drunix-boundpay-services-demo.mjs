@@ -3,27 +3,33 @@ import Database from 'better-sqlite3';
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as grpc from '@grpc/grpc-js';
 import { connect, hash, signers } from '@hyperledger/fabric-gateway';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const networkHome = path.resolve(process.env.DRUNIX_TEST_NETWORK_HOME || '/tmp/drunix-v1.0.0/drunix-network/test-network');
+const networkHome = path.resolve(process.env.DRUNIX_TEST_NETWORK_HOME || path.join(root, '.drunix/source/drunix-network/test-network'));
 const channel = process.env.DRUNIX_CHANNEL || 'boundpay';
 const chaincode = process.env.DRUNIX_CHAINCODE || 'boundpay-shared-authority';
 const runId = crypto.randomUUID();
 const mandateId = `bp-app-demo-${runId}`;
-const demoDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'boundpay-drunix-services-'));
+const runsHome = path.resolve(process.env.BOUNDPAY_RUNS_HOME || path.join(root, '.boundpay-runs'));
+await fsp.mkdir(runsHome, { recursive: true, mode: 0o700 });
+const demoDir = await fsp.mkdtemp(path.join(runsHome, 'drunix-services-'));
 const seedDb = path.join(demoDir, 'seed.sqlite');
 const dbA = path.join(demoDir, 'service-org1.sqlite');
 const dbB = path.join(demoDir, 'service-org2.sqlite');
 const children = [];
 const logs = new Map();
-const generatedAuthorityKeyPaths = [];
 const reviewSeconds = Number(process.env.DRUNIX_DEMO_REVIEW_SECONDS || 0);
 const ambiguousFault = process.env.DRUNIX_DEMO_AMBIGUOUS_FAULT || 'SIMULATE_TIMEOUT';
+const providerToken = crypto.randomBytes(32).toString('hex');
+const providerReadToken = crypto.randomBytes(32).toString('hex');
+const verifierToken = crypto.randomBytes(32).toString('hex');
+const providerUrl = 'http://127.0.0.1:3220';
+const verifierUrl = 'http://127.0.0.1:3221';
+const measurements = [];
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -83,7 +89,7 @@ function launch(label, port, env) {
   const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   const child = spawn(executable, ['exec', 'next', 'start', '--hostname', '127.0.0.1', '--port', String(port)], {
     cwd: root,
-    env: { ...process.env, ...env, NEXT_TELEMETRY_DISABLED: '1' },
+    env: { PATH: process.env.PATH, ...env, NEXT_TELEMETRY_DISABLED: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   children.push(child);
@@ -123,6 +129,7 @@ async function waitForServer(server) {
 }
 
 async function api(server, pathname, { cookie, method = 'GET', body } = {}) {
+  const started = performance.now();
   const response = await fetch(`http://127.0.0.1:${server.port}${pathname}`, {
     method,
     headers: {
@@ -136,6 +143,7 @@ async function api(server, pathname, { cookie, method = 'GET', body } = {}) {
   let data;
   try { data = JSON.parse(text); } catch { throw new Error(`${pathname} returned HTTP ${response.status}: ${text.slice(0, 500)}`); }
   if (!response.ok) throw new Error(`${pathname} returned HTTP ${response.status}: ${JSON.stringify(data).slice(0, 700)}`);
+  measurements.push({ service: server.label, method, route: pathname.replace(/\/intents\/[^/]+/, '/intents/:id'), latencyMs: Math.round(performance.now() - started), success: true });
   return { data, response };
 }
 
@@ -158,7 +166,6 @@ function createDemoAuthorityKey(label) {
   const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
   fs.writeFileSync(privatePath, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
   fs.writeFileSync(publicPath, publicPem, { mode: 0o600 });
-  generatedAuthorityKeyPaths.push(privatePath, publicPath);
   return { keyId: `demo-${label}-${runId}`, privatePath, publicPath, publicPem };
 }
 
@@ -199,10 +206,36 @@ function appEnv({ identity, verifier, participantsJson, verifierJson, databasePa
     DRUNIX_TLS_ROOT_CERT_FILE: path.join(networkHome, 'organizations', 'peerOrganizations', identity.domain, 'peers', `peer0.${identity.domain}`, 'tls', 'ca.crt'),
     DRUNIX_CLIENT_CERT_FILE: path.join(networkHome, 'organizations', 'peerOrganizations', identity.domain, 'users', `${identity.user}@${identity.domain}`, 'msp', 'signcerts', identity.certFile),
     DRUNIX_CLIENT_PRIVATE_KEY_FILE: identity.keyPath,
-    DRUNIX_VERIFIER_CLIENT_CERT_FILE: path.join(networkHome, 'organizations', 'peerOrganizations', verifier.domain, 'users', `${verifier.user}@${verifier.domain}`, 'msp', 'signcerts', verifier.certFile),
-    DRUNIX_VERIFIER_CLIENT_PRIVATE_KEY_FILE: verifier.keyPath,
+    DRUNIX_VERIFIER_CLIENT_CERT_FILE: '',
+    DRUNIX_VERIFIER_CLIENT_PRIVATE_KEY_FILE: '',
+    SHARED_AUTHORITY_VERIFIER_URL: verifierUrl,
+    SHARED_AUTHORITY_VERIFIER_TOKEN: verifierToken,
+    MOCK_PROVIDER_URL: providerUrl,
+    MOCK_PROVIDER_TOKEN: providerToken,
+    MOCK_PROVIDER_READ_TOKEN: '',
     DRUNIX_COMMIT_TIMEOUT_MS: '120000',
   };
+}
+
+function launchAuxiliary(label, script, env) {
+  const child = spawn(process.execPath, ['--import', 'tsx', script], { cwd: root, env: { PATH: process.env.PATH, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+  children.push(child);
+  logs.set(label, '');
+  for (const stream of [child.stdout, child.stderr]) stream.on('data', (chunk) => logs.set(label, (logs.get(label) + chunk.toString()).slice(-16000)));
+  return child;
+}
+
+async function waitForAuxiliary(url, token, child) {
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) throw new Error('Independent provider or verifier exited before readiness');
+    try {
+      const response = await fetch(`${url}/health`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(1000) });
+      if (response.ok) return;
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error('Independent provider or verifier did not become ready');
 }
 
 async function enrichNetworkIdentity(org, user, material) {
@@ -264,6 +297,28 @@ try {
 
   const envA = appEnv({ identity: org1, verifier, participantsJson, verifierJson, databasePath: dbA, authority: authorityA, verificationKeysJson });
   const envB = appEnv({ identity: org2, verifier, participantsJson, verifierJson, databasePath: dbB, authority: authorityB, verificationKeysJson });
+  const providerEnv = {
+    MOCK_PROVIDER_TOKEN: providerToken, MOCK_PROVIDER_READ_TOKEN: providerReadToken,
+    MOCK_PROVIDER_DATABASE_PATH: path.join(demoDir, 'provider.sqlite'), MOCK_PROVIDER_PORT: '3220',
+  };
+  const provider = launchAuxiliary('Durable MOCK provider', 'scripts/mock-provider-server.ts', providerEnv);
+  await waitForAuxiliary(providerUrl, providerToken, provider);
+  const verifierEnv = {
+    DRUNIX_MANDATE_ID: mandateId, DRUNIX_CHANNEL: channel, DRUNIX_CHAINCODE: chaincode,
+    DRUNIX_VERIFIER_MSP_ID: verifier.mspId, DRUNIX_GATEWAY_ENDPOINT: verifier.endpoint,
+    DRUNIX_PEER_HOST_ALIAS: verifier.hostAlias, DRUNIX_TLS_ROOT_CERT_FILE: envA.DRUNIX_TLS_ROOT_CERT_FILE,
+    DRUNIX_PARTICIPANT_IDENTITIES_JSON: participantsJson, DRUNIX_VERIFIER_IDENTITIES_JSON: verifierJson,
+    DRUNIX_VERIFIER_CLIENT_CERT_FILE: path.join(networkHome, 'organizations', 'peerOrganizations', verifier.domain, 'users', `${verifier.user}@${verifier.domain}`, 'msp', 'signcerts', verifier.certFile),
+    DRUNIX_VERIFIER_CLIENT_PRIVATE_KEY_FILE: verifier.keyPath, DRUNIX_COMMIT_TIMEOUT_MS: '120000',
+    SHARED_AUTHORITY_VERIFIER_TOKEN: verifierToken, SHARED_AUTHORITY_VERIFIER_PORT: '3221',
+    PAYMENT_ADAPTER_MODE: 'MOCK', MOCK_PROVIDER_URL: providerUrl, MOCK_PROVIDER_READ_TOKEN: providerReadToken,
+  };
+  const independentVerifier = launchAuxiliary('Independent outcome verifier', 'scripts/independent-verifier-server.ts', verifierEnv);
+  await waitForAuxiliary(verifierUrl, verifierToken, independentVerifier);
+  // Separate private role configurations are retained outside version control.
+  for (const [name, env] of Object.entries({ 'service-a': envA, 'service-b': envB, verifier: verifierEnv, provider: providerEnv })) {
+    fs.writeFileSync(path.join(demoDir, `${name}.json`), JSON.stringify(env, null, 2), { mode: 0o600 });
+  }
   const serviceA = launch('BoundPay Org1 service', 3211, envA);
   const serviceB = launch('BoundPay Org2 service', 3212, envB);
   await Promise.all([waitForServer(serviceA), waitForServer(serviceB)]);
@@ -425,7 +480,11 @@ try {
   const losingIntentId = outcomes[0].status === 'BLOCKED' ? intentA.id : intentB.id;
   const losingReservationId = `res-${crypto.createHash('sha256').update(losingIntentId).digest('hex').slice(0, 32)}`;
 
-  console.log(JSON.stringify({
+  const providerMetrics = await fetch(`${providerUrl}/metrics`, { headers: { authorization: `Bearer ${providerReadToken}` } }).then((response) => response.json());
+  const creationCalls = providerMetrics.calls.filter((call) => call.method === 'createOrder');
+  assert(!creationCalls.some((call) => call.intentId === losingIntentId), 'Losing reservation reached the payment provider');
+  assert(creationCalls.filter((call) => call.intentId === timeoutIntent.data.intent.id).length === 1, 'Unknown payment was dispatched more than once');
+  const report = {
     integration: 'two independent BoundPay HTTP service instances on actual Drunix local network',
     ambiguousProviderScenario: ambiguousFault,
     network: `Drunix v1.0.0 local test network; channel ${channel}; chaincode boundpay-shared-authority v1.2`,
@@ -452,6 +511,10 @@ try {
       ledgerOutageFailsClosedWithoutPayment: outageExecution.data.result.status === 'UNKNOWN' && outageExecution.data.result.message.includes('No payment request was sent'),
       preSendReservationRecoversAfterLedgerReturns: outageRecovery.data.result.status === 'PAYMENT_CONFIRMED' && reservations.some((entry) => entry.reservationId === `res-${crypto.createHash('sha256').update(outageIntent.data.intent.id).digest('hex').slice(0, 32)}` && entry.status === 'SETTLED'),
       noExternalProviderOrBankCall: true,
+      independentVerifierProcess: true,
+      purchasingServicesHaveNoVerifierPrivateKeyConfigured: !envA.DRUNIX_VERIFIER_CLIENT_PRIVATE_KEY_FILE && !envB.DRUNIX_VERIFIER_CLIENT_PRIVATE_KEY_FILE,
+      losingServiceMadeNoProviderCall: !creationCalls.some((call) => call.intentId === losingIntentId),
+      unknownAttemptDispatchedOnlyOnce: creationCalls.filter((call) => call.intentId === timeoutIntent.data.intent.id).length === 1,
     },
     transactions: {
       issueMandate: issued.data.transactionId,
@@ -461,10 +524,13 @@ try {
       unknownReserve: unknownReservation.reserveTransactionId,
       unknownDispatchClaim: unknownReservation.dispatchTransactionId,
     },
-    trustLimit: 'The sample verifier certificate is available to both test services; verifier governance is not independent in this demo.',
-    label: 'MOCK ONLY — in-process synthetic payment adapter; no provider or bank call',
+    measurements,
+    trustLimit: 'Verifier credentials are configured only in a separate process, with independent read-only provider evidence. All processes still run under one local host operator; OS isolation and independent organizational governance are not established.',
+    label: 'MOCK ONLY — separate persistent synthetic provider; no external provider or bank call',
     retainedDemoDataDirectory: demoDir,
-  }, null, 2));
+  };
+  fs.writeFileSync(path.join(demoDir, 'report.json'), JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(report, null, 2));
   if (reviewSeconds > 0) {
     console.error(`Review the local Org1 and Org2 dashboards at http://127.0.0.1:3211/shared-authority and http://127.0.0.1:3212/shared-authority for ${reviewSeconds} seconds; both processes will then stop.`);
     await new Promise((resolve) => setTimeout(resolve, reviewSeconds * 1000));
@@ -475,7 +541,5 @@ try {
   process.exitCode = 1;
 } finally {
   await Promise.all(children.map(stopChild));
-  for (const keyPath of generatedAuthorityKeyPaths) {
-    try { fs.unlinkSync(keyPath); } catch {}
-  }
+  // Preserve role configs, keys and databases in the ignored private run directory.
 }

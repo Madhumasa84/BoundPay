@@ -1,0 +1,25 @@
+diff --git a/lib/parse.js b/lib/parse.js
+index 3a6988e629f52aee6609dc5ec290a5e9ff47cecb..6654a7428c05e3defea4a004a7eecaed82d22c27 100644
+--- a/lib/parse.js
++++ b/lib/parse.js
+@@ -143,6 +143,10 @@ const parse = (input, options = {}) => {
+      */
+ 
+     if (value === CHAR_LEFT_PARENTHESES) {
++      // Bound AST depth before compile/expand/stringify recurse over it.
++      if (stack.length >= 128) {
++        throw new SyntaxError('Pattern exceeds maximum nesting depth (128)');
++      }
+       block = push({ type: 'paren', nodes: [] });
+       stack.push(block);
+       push({ type: 'text', value });
+@@ -195,6 +199,9 @@ const parse = (input, options = {}) => {
+      */
+ 
+     if (value === CHAR_LEFT_CURLY_BRACE) {
++      if (stack.length >= 128) {
++        throw new SyntaxError('Pattern exceeds maximum nesting depth (128)');
++      }
+       depth++;
+ 
+       const dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;

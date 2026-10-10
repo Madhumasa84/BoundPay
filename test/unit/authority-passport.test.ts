@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { eq } from 'drizzle-orm';
@@ -28,6 +28,7 @@ describe('Authority Passport domain, signing, composition, and lifecycle', () =>
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     closeDefaultDb();
     for (const suffix of ['', '-wal', '-shm']) try { fs.unlinkSync(`${dbPath}${suffix}`); } catch {}
   });
@@ -47,6 +48,7 @@ describe('Authority Passport domain, signing, composition, and lifecycle', () =>
   }
 
   it('issues an immutable EdDSA passport with explicit constraints and verifies it', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(clock.now().getTime());
     const op = operator();
     const issued = createAuthorityPassport(op.id, passportInput(), clock);
     expect(issued.payload.currency).toBe('INR');

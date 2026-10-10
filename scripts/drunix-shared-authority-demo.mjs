@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import * as grpc from '@grpc/grpc-js';
 import { connect, EndorseError, hash, signers } from '@hyperledger/fabric-gateway';
 
-const home = path.resolve(process.env.DRUNIX_TEST_NETWORK_HOME || '/tmp/drunix-v1.0.0/drunix-network/test-network');
+const home = path.resolve(process.env.DRUNIX_TEST_NETWORK_HOME || '.drunix/source/drunix-network/test-network');
 const channelName = process.env.DRUNIX_CHANNEL || 'boundpay';
 const chaincodeName = process.env.DRUNIX_CHAINCODE || 'boundpay-shared-authority';
 const commitDeadlineMs = 120_000;

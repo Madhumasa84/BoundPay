@@ -17,7 +17,11 @@
     "test:stress": "AGENT_MODE=fixture PAYMENT_ADAPTER_MODE=MOCK AUTHORITY_TEST_MODE=true CONCURRENCY_STRESS_ROUNDS=25 vitest run test/integration/db-concurrency-multiprocess.test.ts test/integration/authority-passport-process-contention.test.ts",
     "test:deterministic": "vitest run test/evaluation/deterministic-manifest.test.ts",
     "shared-authority:drunix-demo": "node scripts/drunix-shared-authority-demo.mjs",
+    "shared-authority:prepare": "node scripts/prepare-drunix-workspace.mjs",
     "shared-authority:drunix-app-demo": "node scripts/drunix-boundpay-services-demo.mjs",
+    "shared-authority:verify-repeatability": "node scripts/repeat-drunix-services-demo.mjs",
+    "shared-authority:verifier": "tsx scripts/independent-verifier-server.ts",
+    "payment:mock-server": "tsx scripts/mock-provider-server.ts",
     "test:state": "vitest run test/property/state-machine-sequences.prop.test.ts",
     "eval:manifest": "tsx evaluation/generate-manifest.ts",
     "eval:latency": "tsx evaluation/benchmark-policy.ts",
@@ -36,12 +40,22 @@
       "esbuild"
     ],
     "overrides": {
+      "brace-expansion@^1.0.0": "1.1.21",
+      "brace-expansion@^2.0.0": "2.1.7",
+      "brace-expansion@^5.0.0": "5.0.12",
+      "esbuild@<0.25.0": "0.25.12",
+      "glob@^10.0.0": "10.5.0",
       "postcss": ">=8.5.23",
-      "sharp": ">=0.35.0"
+      "sharp": ">=0.35.5",
+      "source-map-js": ">=1.2.2",
+      "postcss-selector-parser": "7.1.6"
+    },
+    "patchedDependencies": {
+      "braces@3.0.3": "patches/braces@3.0.3.patch"
     }
   },
   "dependencies": {
-    "@grpc/grpc-js": "1.14.4",
+    "@grpc/grpc-js": "1.14.5",
     "@hyperledger/fabric-gateway": "1.10.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^11.8.1",
@@ -49,7 +63,7 @@
     "drizzle-orm": "^0.45.2",
     "jose": "^6.2.11",
     "lucide-react": "^1.39.0",
-    "next": "15.5.24",
+    "next": "15.5.27",
     "openai": "^7.9.0",
     "razorpay": "^2.9.8",
     "react": "18.3.1",

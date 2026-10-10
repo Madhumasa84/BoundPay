@@ -79,7 +79,7 @@ The default environment uses fixture proposals and the labeled `MOCK` adapter. L
 
 For the single-service application, use the authenticated scenario runner on `/shop` and follow the [demo script](docs/DEMO_SCRIPT.md).
 
-For the two-service Drunix demonstration, first prepare the pinned network and deploy the chaincode using the [Phase 2 runbook](docs/DRUNIX_PHASE2_IMPLEMENTATION.md#reproduce-the-local-network-and-chaincode). Then run:
+For the two-service Drunix demonstration, prepare the persistent pinned network and deploy the chaincode using the [current engineering runbook](docs/ENGINEERING_UPGRADE.md#persistent-setup). Then run:
 
 ```bash
 pnpm run build
@@ -87,24 +87,26 @@ pnpm run shared-authority:drunix-demo
 pnpm run shared-authority:drunix-app-demo
 ```
 
-The app demo starts two production-mode BoundPay services with separate SQLite files and Drunix identities. It exercises competing reservations, restart recovery, an unknown payment result, and a pre-dispatch ledger outage. Its payment adapter is MOCK. The demo does not evidence Razorpay settlement or a bank transfer. Set `DRUNIX_DEMO_REVIEW_SECONDS=90` before the app-demo command to leave the local dashboards open for review.
+The app demo starts two production-mode BoundPay services with separate SQLite files and Drunix identities, an independent outcome verifier, and a persistent MOCK provider with separate dispatch/read credentials. It exercises competing reservations, restart recovery, an unknown payment result, and a pre-dispatch ledger outage, and records provider calls and HTTP latency. Private run artifacts persist under `.boundpay-runs/`. The demo does not evidence Razorpay settlement or a bank transfer. Set `DRUNIX_DEMO_REVIEW_SECONDS=90` before the app-demo command to leave the local dashboards open for review. Run `pnpm run shared-authority:verify-repeatability` on a running network for repeated assertion checks and retained latency summaries.
 
 ## Verification
 
-The working tree was verified on 2026-09-29:
+The working tree was verified on 2026-10-10; [engineering upgrade results](evaluation/engineering-upgrade-2026-10-10.json) record the new verifier/provider checks, and [initial verification results](evaluation/verification-2026-10-10.json) retain dependency and installation evidence. Dependency repairs upgrade Next.js to `15.5.27`, sharp to at least `0.35.5`, source-map-js to at least `1.2.2`, and all PostCSS selector-parser copies to `7.1.6`. A retained pnpm patch limits braces parser nesting before recursive traversal; five regression tests cover excessive brace, parenthesis, mixed, and unclosed nesting alongside ordinary patterns.
 
 | Check | Result |
 | --- | --- |
-| Vitest | 347/347 tests passed across 32 files. |
+| Vitest | 464/464 tests passed across 41 files. |
 | Playwright | 18/18 Chromium scenarios passed using MOCK payments. |
 | Concurrency stress | 7/7 tests passed in the dedicated 25-round worker-process run. |
-| Go chaincode | `go test -mod=vendor -race -count=1 ./...` passed in the pinned Go 1.23.0 container. |
+| Go chaincode | `scripts/drunix-toolchain/go test -race -cover ./...` and `scripts/drunix-toolchain/go vet ./...` passed in the pinned Go 1.23.0 container; statement coverage was 31.8%. |
 | TypeScript, lint, production build | Passed. |
 | Authority config and public-artifact scan | Passed; 104 build files scanned with no configured secrets found. |
-| Production dependency audit | No known vulnerabilities after updating Next.js to `15.5.24` and `@grpc/grpc-js` to `1.14.4`. |
+| Production dependency audit | Zero advisories. The full audit retains one high-severity development dependency advisory for locally patched braces `3.0.3`; it is not suppressed. |
 | Frozen install | `pnpm install --offline --frozen-lockfile` passed. |
 
-The browser E2E suite and chaincode tests passed in this verification run. The ledger-backed two-service demo was last run on 2026-09-27 and was not repeated in the 2026-09-29 environment because Docker API access was unavailable. The current checks therefore do not establish a fresh ledger-backed payment race. See the [Phase 2 report](docs/DRUNIX_PHASE2_IMPLEMENTATION.md) for prior transaction evidence and the [submission readiness review](docs/DRUNIX_SUBMISSION_READINESS.md) for measured results and the three-minute presentation script.
+The browser E2E suite uses fixture proposals and MOCK payments. The persistent Drunix source and matching CLI tools were prepared successfully; a fresh ledger-backed two-service demo and ten-run measurement have not been executed for the upgrade. The earlier stopped network's identity and configuration files under `/tmp` are missing. Live model and Razorpay calls were not repeated. See the [2 October verification](docs/verification-2026-10-02.md) for prior live and ledger evidence, including Razorpay's credential rejection. These checks do not establish a fresh ledger-backed payment race or payment-provider settlement.
+
+The [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) has no upstream patched release. The local mitigation rejects string patterns with excessive AST nesting; it does not validate AST objects constructed directly by callers. Keep the pnpm patch until an upstream fix can replace it.
 
 To rerun the application checks:
 
@@ -113,8 +115,8 @@ pnpm run typecheck
 pnpm run lint
 pnpm test
 pnpm run test:stress
-pnpm run test:e2e
 pnpm run build
+pnpm run test:e2e
 pnpm audit --prod
 pnpm run authority:validate
 pnpm run security:public-artifacts

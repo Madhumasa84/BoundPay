@@ -1,0 +1,245 @@
+{
+  "evaluated_at": "2026-10-02T16:35:26.316Z",
+  "channel": "boundpay-final",
+  "chaincode": "boundpay-complete-authority",
+  "label": "Actual local Drunix ledger; MOCK payments",
+  "contract": {
+    "network": "DRUNIX v1.0.0 local test network",
+    "reservationRacers": "two separate Node processes using Org1MSP and Org2MSP certificates",
+    "channel": "boundpay-final",
+    "chaincode": "boundpay-complete-authority",
+    "identities": {
+      "owner": {
+        "mspId": "Org1MSP",
+        "clientId": "eDUwOTo6Q049VXNlcjFAb3JnMS5leGFtcGxlLmNvbSxPVT1jbGllbnQsTD1TYW4gRnJhbmNpc2NvLFNUPUNhbGlmb3JuaWEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1TYW4gRnJhbmNpc2NvLFNUPUNhbGlmb3JuaWEsQz1VUw=="
+      },
+      "participantA": {
+        "mspId": "Org1MSP",
+        "clientId": "eDUwOTo6Q049VXNlcjFAb3JnMS5leGFtcGxlLmNvbSxPVT1jbGllbnQsTD1TYW4gRnJhbmNpc2NvLFNUPUNhbGlmb3JuaWEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1TYW4gRnJhbmNpc2NvLFNUPUNhbGlmb3JuaWEsQz1VUw=="
+      },
+      "participantB": {
+        "mspId": "Org2MSP",
+        "clientId": "eDUwOTo6Q049VXNlcjFAb3JnMi5leGFtcGxlLmNvbSxPVT1jbGllbnQsTD1TYW4gRnJhbmNpc2NvLFNUPUNhbGlmb3JuaWEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1TYW4gRnJhbmNpc2NvLFNUPUNhbGlmb3JuaWEsQz1VUw=="
+      },
+      "verifier": {
+        "mspId": "Org1MSP",
+        "clientId": "eDUwOTo6Q049QWRtaW5Ab3JnMS5leGFtcGxlLmNvbSxPVT1hZG1pbixMPVNhbiBGcmFuY2lzY28sU1Q9Q2FsaWZvcm5pYSxDPVVTOjpDTj1jYS5vcmcxLmV4YW1wbGUuY29tLE89b3JnMS5leGFtcGxlLmNvbSxMPVNhbiBGcmFuY2lzY28sU1Q9Q2FsaWZvcm5pYSxDPVVT"
+      }
+    },
+    "mandateId": "bp-demo-ec2700b0-b91f-4445-ae8a-cc6205ff1743",
+    "passportId": "pass-demo-ec2700b0-b91f-4445-ae8a-cc6205ff1743",
+    "transactions": {
+      "registerIssuerKey": "e4a682892063d8c1a12c0ddf2a7301ee2f7a4a8f59b9451f8ce30801cc9735e3",
+      "issueMandate": "a71d78fdd4d87d87a7c7394d1509bc7f94c2bf21ce95255b55db6e4ac7be2b04",
+      "raceAccepted": "bb0f62d0b42a75541a26aa305f723328f5bb19338496ebb3b93b3813e3247395",
+      "dispatchClaim": "3b1d6d3c1aa32bebe088e6e18564bf4f0f6c7af371ee991e48949d08183a6d35",
+      "outcomeCommit": "a8179923a95ce5e444cf5645daefc681af677a4884e0a032260cebcb23984500",
+      "unknownMark": "b454eb98adcea608f99bcf3f55a28e8778bf7fafa45c56982210c892a58af6e5",
+      "unknownResolution": "86f0d6a4b584ce2ef853016332aae4a572db17215b485557c75f1051ea774172",
+      "revoke": "0d42ca81449f0d0d8adffe2e6652f07f4cf29a8c710d21793f58940d24a98898",
+      "existingReservationRetry": "e4af230a5982e508a066eac8d0301be1ea1480556a7ae4cc73a8bfe0ce909e45",
+      "failureRelease": "cfbe83ed0d728a5a1814a3d2877b03d93c5633fdf6817e18e2e82c6990651cef",
+      "exactRemainder": "3870a8e713efef3f40059c312a249d3f73b9768935b51acbd6ff810ed090edec",
+      "preDispatchCancellation": "09e08bd8a4d4e1d24bc9b69a69af4811d9699cc90b879033af2802cf24445bc2"
+    },
+    "timingsMs": {
+      "definition": "Client wall-clock timing from before Gateway submitAsync to VALID commit status; submitAcceptedToCommit begins after submitAsync returns. Local sample network only.",
+      "issue": {
+        "clientRequestToCommitMs": 2878.11,
+        "submitAcceptedToCommitMs": 2573.25
+      },
+      "raceWinner": {
+        "clientRequestToCommitMs": 2835.66,
+        "submitAcceptedToCommitMs": 2587.5
+      },
+      "duplicateReserve": {
+        "clientRequestToCommitMs": 3021.49,
+        "submitAcceptedToCommitMs": 2941.29
+      },
+      "laterReserves": [
+        {
+          "clientRequestToCommitMs": 2454.97,
+          "submitAcceptedToCommitMs": 2380.91
+        },
+        {
+          "clientRequestToCommitMs": 2220.04,
+          "submitAcceptedToCommitMs": 2137.7
+        }
+      ],
+      "dispatchClaim": {
+        "clientRequestToCommitMs": 2213.98,
+        "submitAcceptedToCommitMs": 2153.38
+      },
+      "outcome": {
+        "clientRequestToCommitMs": 2194.11,
+        "submitAcceptedToCommitMs": 2118.18
+      }
+    },
+    "checks": {
+      "exactlyOneConcurrentReservation": true,
+      "exactRemainderReservedAndOverLimitRejected": true,
+      "duplicateReservationIdempotent": true,
+      "changedContentReuseRejected": true,
+      "onePassportCannotCreateASecondSharedAllowance": true,
+      "unauthorizedIssueRejected": true,
+      "unauthorizedSpendRejected": true,
+      "unauthorizedRevokeRejected": true,
+      "unauthorizedOutcomeRejected": true,
+      "unauthorizedUnknownUpdateRejected": true,
+      "dispatchOnlyAfterCommittedClaim": true,
+      "timeoutRemainsReservedUntilReconciliation": true,
+      "revocationBlocksNewReservations": true,
+      "authorizedReviewerReadback": true
+    },
+    "paymentLabel": "MOCK ONLY — the script makes no provider or bank payment call",
+    "finalTotals": {
+      "settledPaise": 400000,
+      "reservedPaise": 0,
+      "availablePaise": 100000
+    }
+  },
+  "timeout": {
+    "integration": "two independent BoundPay HTTP service instances on actual Drunix local network",
+    "ambiguousProviderScenario": "SIMULATE_TIMEOUT",
+    "network": "Drunix v1.0.0 local test network; channel boundpay-final; chaincode boundpay-shared-authority v1.2",
+    "participantServices": [
+      {
+        "instance": "Org1 service",
+        "port": 3211,
+        "msp": "Org1MSP",
+        "separateDatabase": "service-org1.sqlite"
+      },
+      {
+        "instance": "Org2 service",
+        "port": 3212,
+        "msp": "Org2MSP",
+        "separateDatabase": "service-org2.sqlite"
+      }
+    ],
+    "mandate": {
+      "id": "bp-app-demo-9cf64b47-7c49-40e7-b525-6fbe8627b61d",
+      "capPaise": 500000,
+      "settledPaise": 369800,
+      "reservedPaise": 89900,
+      "availablePaise": 40300
+    },
+    "proposals": [
+      "850e9e54-cdfb-4926-baee-eb65a5a95930",
+      "0a12f5db-f16f-476e-bb36-f550c0161261",
+      "eb1baebb-8d51-43a5-9d78-7cb202c1e603",
+      "8a61d942-5a06-4bbc-a0cd-d504684c20c9"
+    ],
+    "outcomes": [
+      {
+        "status": "PAYMENT_CONFIRMED",
+        "success": true,
+        "paymentMode": "MOCK — SYNTHETIC"
+      },
+      {
+        "status": "BLOCKED",
+        "success": false,
+        "paymentMode": "MOCK — SYNTHETIC"
+      }
+    ],
+    "checks": {
+      "distinctCertificatesAndMspIdentities": true,
+      "distinctApplicationSigningKeysAndSharedPublicTrust": true,
+      "separateSqliteDatabases": true,
+      "bothExistingHumanApprovalGatesPassed": true,
+      "exactlyOnePaymentDispatchedAndConfirmed": true,
+      "sharedLimitNotExceeded": true,
+      "winningOutcomeHasValidLedgerCommit": true,
+      "storedOutcomeCommitCanBeReconciledAfterLostLocalAcknowledgement": true,
+      "outcomeReadbackUsesOriginalTransitionTransactionId": true,
+      "loserHasNoSharedReservation": true,
+      "ambiguousProviderOutcomeRetainsUnknownReservation": true,
+      "restartAndMissingProviderEvidenceDoNotRedispatchOrRelease": true,
+      "ledgerOutageFailsClosedWithoutPayment": true,
+      "preSendReservationRecoversAfterLedgerReturns": true,
+      "noExternalProviderOrBankCall": true
+    },
+    "transactions": {
+      "issueMandate": "15997603f8118ab387ccd26bdc1cab66043ff2116f9ab299c633d1b96f58d2a9",
+      "reserve": "5b4689428b6887fe912accb9d09d3758c3a41d511dd71a64264d18609a4d292c",
+      "dispatchClaim": "8d51b0a48129f38a8402476e529722a7602d780747ab6b08ad064383e910fc49",
+      "outcome": "a761b6305306e03c2e280bce029d418912c83bc94faf5813953c04d6cc975fad",
+      "unknownReserve": "397e9cda78bccb58f0a3e8bf496f15d018d18662a7162c18723756916af6f078",
+      "unknownDispatchClaim": "21133f634a37048ddf9f189a6c93428ec87b0384698e9e209aa1ba383439ff48"
+    },
+    "trustLimit": "The sample verifier certificate is available to both test services; verifier governance is not independent in this demo.",
+    "label": "MOCK ONLY — in-process synthetic payment adapter; no provider or bank call",
+    "retainedDemoDataDirectory": "/tmp/boundpay-drunix-services-NG7wQl"
+  },
+  "response_loss": {
+    "integration": "two independent BoundPay HTTP service instances on actual Drunix local network",
+    "ambiguousProviderScenario": "SIMULATE_RESPONSE_LOSS",
+    "network": "Drunix v1.0.0 local test network; channel boundpay-final; chaincode boundpay-shared-authority v1.2",
+    "participantServices": [
+      {
+        "instance": "Org1 service",
+        "port": 3211,
+        "msp": "Org1MSP",
+        "separateDatabase": "service-org1.sqlite"
+      },
+      {
+        "instance": "Org2 service",
+        "port": 3212,
+        "msp": "Org2MSP",
+        "separateDatabase": "service-org2.sqlite"
+      }
+    ],
+    "mandate": {
+      "id": "bp-app-demo-2f269b85-aad0-4793-925e-10795cf26cdb",
+      "capPaise": 500000,
+      "settledPaise": 369800,
+      "reservedPaise": 89900,
+      "availablePaise": 40300
+    },
+    "proposals": [
+      "c2bfb513-830d-4401-abc4-bab3fb5ba3bf",
+      "0e192cfd-d1ee-4e61-86ff-fce89fe72f35",
+      "74d6586e-7ea7-4982-a9f7-1c46cbd9c4a3",
+      "d8bd4e84-7e88-4109-9385-cec9c524c9a7"
+    ],
+    "outcomes": [
+      {
+        "status": "PAYMENT_CONFIRMED",
+        "success": true,
+        "paymentMode": "MOCK — SYNTHETIC"
+      },
+      {
+        "status": "BLOCKED",
+        "success": false,
+        "paymentMode": "MOCK — SYNTHETIC"
+      }
+    ],
+    "checks": {
+      "distinctCertificatesAndMspIdentities": true,
+      "distinctApplicationSigningKeysAndSharedPublicTrust": true,
+      "separateSqliteDatabases": true,
+      "bothExistingHumanApprovalGatesPassed": true,
+      "exactlyOnePaymentDispatchedAndConfirmed": true,
+      "sharedLimitNotExceeded": true,
+      "winningOutcomeHasValidLedgerCommit": true,
+      "storedOutcomeCommitCanBeReconciledAfterLostLocalAcknowledgement": true,
+      "outcomeReadbackUsesOriginalTransitionTransactionId": true,
+      "loserHasNoSharedReservation": true,
+      "ambiguousProviderOutcomeRetainsUnknownReservation": true,
+      "restartAndMissingProviderEvidenceDoNotRedispatchOrRelease": true,
+      "ledgerOutageFailsClosedWithoutPayment": true,
+      "preSendReservationRecoversAfterLedgerReturns": true,
+      "noExternalProviderOrBankCall": true
+    },
+    "transactions": {
+      "issueMandate": "8c8ac4b2ac96336371115347ade06e6f15a8e4a714c51f1ea2831bd827068cb7",
+      "reserve": "da1986fb77bab609a40c3e2d1c51921231431e2e4e7ca5046e6d8408da27e101",
+      "dispatchClaim": "8398bb81efcd1f9ede157b434306f47cad70982228b407ce4bb7054d62345213",
+      "outcome": "93cad7448d58d79fc266e32793c795132510e4d62872b22829e3d7fc77a616ff",
+      "unknownReserve": "2def320121c37b3371cbdf73658f90753d319a8a6161809a1b45aeaedb07c255",
+      "unknownDispatchClaim": "02154ef17bf3c7e8f3b84a054d904219c79a4bd75cb7312fff8d567e05f61aa6"
+    },
+    "trustLimit": "The sample verifier certificate is available to both test services; verifier governance is not independent in this demo.",
+    "label": "MOCK ONLY — in-process synthetic payment adapter; no provider or bank call",
+    "retainedDemoDataDirectory": "/tmp/boundpay-drunix-services-Czt1LJ"
+  }
+}
